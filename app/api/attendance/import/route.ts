@@ -4,6 +4,9 @@ import { createServerSupabase } from '@/lib/supabase';
 
 const LATE_HOUR = 9;
 const LATE_MINUTE = 15;
+const BATCH_SIZE = 500;
+
+export const maxDuration = 60;
 
 export async function POST(request: Request) {
   const payload = await getAuthPayload(request);
@@ -18,30 +21,25 @@ export async function POST(request: Request) {
   const text = await file.text();
   const lines = text.split(/\r?\n/).filter(l => l.trim());
 
-  // Parse each line: employee_number  datetime  verify_mode  in_out  work_code  reserved
-  type Punch = { datetime: Date };
-  const punches = new Map<string, Map<string, Punch[]>>(); // empNum -> date -> punches[]
+  // Parse: empNum -> date -> sorted timestamps
+  const punches = new Map<string, Map<string, Date[]>>();
 
   for (const line of lines) {
     const parts = line.trim().split(/\s+/);
-    if (parts.length < 2) continue;
-
+    if (parts.length < 3) continue;
     const empNum = parts[0].trim();
-    const datetimeStr = `${parts[1]} ${parts[2]}`;
-    const dt = new Date(datetimeStr);
+    const dt = new Date(`${parts[1]}T${parts[2]}`);
     if (isNaN(dt.getTime())) continue;
-
-    const dateKey = datetimeStr.split(' ')[0]; // YYYY-MM-DD
-
+    const dateKey = parts[1];
     if (!punches.has(empNum)) punches.set(empNum, new Map());
-    const empMap = punches.get(empNum)!;
-    if (!empMap.has(dateKey)) empMap.set(dateKey, []);
-    empMap.get(dateKey)!.push({ datetime: dt });
+    const dayMap = punches.get(empNum)!;
+    if (!dayMap.has(dateKey)) dayMap.set(dateKey, []);
+    dayMap.get(dateKey)!.push(dt);
   }
 
   const supabase = createServerSupabase();
 
-  // Fetch all employees to map employee_number -> id
+  // Load all employees once
   const { data: employees } = await supabase
     .from('employees')
     .select('id, employee_number')
@@ -51,62 +49,51 @@ export async function POST(request: Request) {
     (employees || []).map(e => [e.employee_number.trim(), e.id])
   );
 
-  let created = 0;
-  let updated = 0;
-  let unmatched = 0;
-  const unmatchedNums: string[] = [];
+  const records: object[] = [];
+  const unmatchedSet = new Set<string>();
 
-  for (const [empNum, dateMap] of punches) {
+  for (const [empNum, dayMap] of punches) {
     const employeeId = empMap.get(empNum);
-    if (!employeeId) {
-      unmatched++;
-      if (!unmatchedNums.includes(empNum)) unmatchedNums.push(empNum);
-      continue;
-    }
+    if (!employeeId) { unmatchedSet.add(empNum); continue; }
 
-    for (const [dateKey, dayPunches] of dateMap) {
-      dayPunches.sort((a, b) => a.datetime.getTime() - b.datetime.getTime());
-      const first = dayPunches[0].datetime;
-      const last = dayPunches[dayPunches.length - 1].datetime;
-
-      const checkIn = first.toISOString();
-      const checkOut = dayPunches.length > 1 ? last.toISOString() : null;
-
+    for (const [dateKey, times] of dayMap) {
+      times.sort((a, b) => a.getTime() - b.getTime());
+      const first = times[0];
+      const last = times[times.length - 1];
+      const checkOut = times.length > 1 ? last.toISOString() : null;
       const workHours = checkOut
         ? Math.round(((last.getTime() - first.getTime()) / 3600000) * 100) / 100
         : null;
+      const h = first.getHours(), m = first.getMinutes();
+      const status = (h > LATE_HOUR || (h === LATE_HOUR && m > LATE_MINUTE)) ? 'LATE' : 'PRESENT';
 
-      const h = first.getHours();
-      const m = first.getMinutes();
-      const isLate = h > LATE_HOUR || (h === LATE_HOUR && m > LATE_MINUTE);
-      const status = isLate ? 'LATE' : 'PRESENT';
-
-      const { error, data } = await supabase
-        .from('attendance')
-        .upsert({
-          employee_id: employeeId,
-          date: dateKey,
-          check_in: checkIn,
-          check_out: checkOut,
-          work_hours: workHours,
-          status,
-          source: 'fingerprint',
-        }, { onConflict: 'employee_id,date' })
-        .select('id')
-        .single();
-
-      if (!error) {
-        if (data) created++;
-      }
+      records.push({
+        employee_id: employeeId,
+        date: dateKey,
+        check_in: first.toISOString(),
+        check_out: checkOut,
+        work_hours: workHours,
+        status,
+        source: 'fingerprint',
+      });
     }
+  }
+
+  // Bulk upsert in batches
+  let created = 0;
+  for (let i = 0; i < records.length; i += BATCH_SIZE) {
+    const batch = records.slice(i, i + BATCH_SIZE);
+    const { error } = await supabase
+      .from('attendance')
+      .upsert(batch as Parameters<ReturnType<typeof supabase.from>['upsert']>[0], { onConflict: 'employee_id,date' });
+    if (!error) created += batch.length;
   }
 
   return NextResponse.json({
     success: true,
     created,
-    updated,
-    unmatched,
-    unmatchedNums: unmatchedNums.slice(0, 20),
+    unmatched: unmatchedSet.size,
+    unmatchedNums: [...unmatchedSet].slice(0, 20),
     totalLines: lines.length,
   });
 }
