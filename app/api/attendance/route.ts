@@ -8,6 +8,8 @@ export async function GET(request: Request) {
 
   const { searchParams } = new URL(request.url);
   const date = searchParams.get('date') || new Date().toISOString().split('T')[0];
+  const from = searchParams.get('from') || '';
+  const to = searchParams.get('to') || '';
   const employeeId = searchParams.get('employee_id') || '';
   const month = searchParams.get('month') || '';
   const year = searchParams.get('year') || '';
@@ -26,7 +28,9 @@ export async function GET(request: Request) {
     query = query.eq('employee_id', employeeId);
   }
 
-  if (month && year) {
+  if (from && to) {
+    query = query.gte('date', from).lte('date', to);
+  } else if (month && year) {
     const start = `${year}-${month.padStart(2, '0')}-01`;
     const lastDay = new Date(parseInt(year), parseInt(month), 0).getDate();
     const end = `${year}-${month.padStart(2, '0')}-${lastDay}`;

@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useCallback, useRef } from 'react';
 import { useLanguage } from '@/lib/i18n';
-import { Plus, X, Upload, FileUp } from 'lucide-react';
+import { Plus, X, Upload, FileUp, Download } from 'lucide-react';
 import { toast } from 'sonner';
 
 interface AttendanceRecord {
@@ -32,11 +32,14 @@ const STATUS_COLORS: Record<string, string> = {
   LEAVE: 'bg-blue-100 text-blue-700',
 };
 
+const today = new Date().toISOString().split('T')[0];
+
 export default function AdminAttendancePage() {
   const { t, lang } = useLanguage();
   const [records, setRecords] = useState<AttendanceRecord[]>([]);
   const [employees, setEmployees] = useState<Employee[]>([]);
-  const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
+  const [dateFrom, setDateFrom] = useState(today);
+  const [dateTo, setDateTo] = useState(today);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
   const [form, setForm] = useState({ employee_id: '', date: '', check_in: '', check_out: '', status: 'PRESENT', notes: '' });
@@ -48,10 +51,11 @@ export default function AdminAttendancePage() {
 
   const fetchRecords = useCallback(() => {
     setLoading(true);
-    fetch(`/api/attendance?date=${date}&limit=100`)
+    const params = new URLSearchParams({ from: dateFrom, to: dateTo, limit: '2000' });
+    fetch(`/api/attendance?${params}`)
       .then(r => r.json())
       .then(d => { setRecords(d.data || []); setLoading(false); });
-  }, [date]);
+  }, [dateFrom, dateTo]);
 
   useEffect(() => { fetchRecords(); }, [fetchRecords]);
 
@@ -60,7 +64,7 @@ export default function AdminAttendancePage() {
   }, []);
 
   const openAdd = () => {
-    setForm({ employee_id: '', date, check_in: '', check_out: '', status: 'PRESENT', notes: '' });
+    setForm({ employee_id: '', date: dateFrom, check_in: '', check_out: '', status: 'PRESENT', notes: '' });
     setShowModal(true);
   };
 
@@ -105,10 +109,40 @@ export default function AdminAttendancePage() {
     }
   };
 
+  const handleExport = () => {
+    if (records.length === 0) return toast.error(lang === 'ar' ? 'لا توجد بيانات للتصدير' : 'No data to export');
+
+    const headers = lang === 'ar'
+      ? ['الاسم', 'رقم الموظف', 'التاريخ', 'وقت الحضور', 'وقت الانصراف', 'ساعات العمل', 'الحالة']
+      : ['Name', 'Employee #', 'Date', 'Check In', 'Check Out', 'Work Hours', 'Status'];
+
+    const rows = records.map(r => [
+      lang === 'ar' ? r.employees.name_ar : r.employees.name_en,
+      r.employees.employee_number,
+      r.date,
+      r.check_in ? new Date(r.check_in).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }) : '-',
+      r.check_out ? new Date(r.check_out).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }) : '-',
+      r.work_hours ?? '-',
+      r.status,
+    ]);
+
+    const csv = [headers, ...rows].map(row => row.map(cell => `"${String(cell).replace(/"/g, '""')}"`).join(',')).join('\n');
+    const bom = '﻿';
+    const blob = new Blob([bom + csv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `attendance_${dateFrom}_${dateTo}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
   const formatTime = (iso: string | null) => {
     if (!iso) return '-';
     return new Date(iso).toLocaleTimeString(lang === 'ar' ? 'ar-EG' : 'en-GB', { hour: '2-digit', minute: '2-digit' });
   };
+
+  const isRange = dateFrom !== dateTo;
 
   return (
     <div className="space-y-5">
@@ -118,6 +152,10 @@ export default function AdminAttendancePage() {
           <p className="text-slate-500 text-sm mt-0.5">{records.length} {t('records')}</p>
         </div>
         <div className="flex items-center gap-2">
+          <button onClick={handleExport} className="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-semibold px-4 py-2.5 rounded-xl transition-colors shadow-sm shadow-emerald-600/30">
+            <Download size={15} />
+            {lang === 'ar' ? 'تصدير Excel' : 'Export Excel'}
+          </button>
           <button onClick={() => { setShowImport(true); setImportResult(null); }} className="flex items-center gap-2 bg-teal-600 hover:bg-teal-700 text-white text-sm font-semibold px-4 py-2.5 rounded-xl transition-colors shadow-sm shadow-teal-600/30">
             <Upload size={15} />
             {lang === 'ar' ? 'استيراد بصمة' : 'Import .dat'}
@@ -129,25 +167,38 @@ export default function AdminAttendancePage() {
         </div>
       </div>
 
-      <div className="bg-white rounded-2xl border border-slate-200/80 p-4 shadow-sm flex items-center gap-3">
-        <label className="text-sm font-semibold text-slate-600">{t('date')}:</label>
-        <input
-          type="date"
-          value={date}
-          onChange={e => setDate(e.target.value)}
-          className="text-sm border border-slate-200 rounded-xl px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-400"
-        />
-        {/* Summary badges */}
-        <div className="flex items-center gap-2 ms-auto">
-          {['PRESENT', 'LATE', 'ABSENT'].map(s => {
-            const cnt = records.filter(r => r.status === s).length;
-            return cnt > 0 ? (
-              <span key={s} className={`text-xs font-bold px-2.5 py-1 rounded-full ${STATUS_COLORS[s]}`}>
-                {cnt} {t(s.toLowerCase() as Parameters<typeof t>[0])}
-              </span>
-            ) : null;
-          })}
+      <div className="bg-white rounded-2xl border border-slate-200/80 p-4 shadow-sm flex flex-wrap items-center gap-3">
+        <div className="flex items-center gap-2">
+          <label className="text-sm font-semibold text-slate-600">{lang === 'ar' ? 'من:' : 'From:'}</label>
+          <input
+            type="date"
+            value={dateFrom}
+            onChange={e => setDateFrom(e.target.value)}
+            className="text-sm border border-slate-200 rounded-xl px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-400"
+          />
         </div>
+        <div className="flex items-center gap-2">
+          <label className="text-sm font-semibold text-slate-600">{lang === 'ar' ? 'إلى:' : 'To:'}</label>
+          <input
+            type="date"
+            value={dateTo}
+            min={dateFrom}
+            onChange={e => setDateTo(e.target.value)}
+            className="text-sm border border-slate-200 rounded-xl px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-400"
+          />
+        </div>
+        {!isRange && (
+          <div className="flex items-center gap-2 ms-auto">
+            {['PRESENT', 'LATE', 'ABSENT'].map(s => {
+              const cnt = records.filter(r => r.status === s).length;
+              return cnt > 0 ? (
+                <span key={s} className={`text-xs font-bold px-2.5 py-1 rounded-full ${STATUS_COLORS[s]}`}>
+                  {cnt} {t(s.toLowerCase() as Parameters<typeof t>[0])}
+                </span>
+              ) : null;
+            })}
+          </div>
+        )}
       </div>
 
       <div className="bg-white rounded-2xl border border-slate-200/80 shadow-sm overflow-hidden">
@@ -156,6 +207,7 @@ export default function AdminAttendancePage() {
             <thead>
               <tr className="bg-slate-50 border-b border-slate-100">
                 <th className="text-start px-5 py-3.5 font-semibold text-slate-600 text-xs">{t('employee')}</th>
+                {isRange && <th className="text-start px-5 py-3.5 font-semibold text-slate-600 text-xs">{t('date')}</th>}
                 <th className="text-start px-5 py-3.5 font-semibold text-slate-600 text-xs">{t('checkIn')}</th>
                 <th className="text-start px-5 py-3.5 font-semibold text-slate-600 text-xs">{t('checkOut')}</th>
                 <th className="text-start px-5 py-3.5 font-semibold text-slate-600 text-xs">{t('workHours')}</th>
@@ -165,9 +217,9 @@ export default function AdminAttendancePage() {
             </thead>
             <tbody className="divide-y divide-slate-50">
               {loading ? (
-                <tr><td colSpan={6} className="py-12 text-center"><div className="w-6 h-6 border-2 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto" /></td></tr>
+                <tr><td colSpan={isRange ? 7 : 6} className="py-12 text-center"><div className="w-6 h-6 border-2 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto" /></td></tr>
               ) : records.length === 0 ? (
-                <tr><td colSpan={6} className="py-12 text-center text-slate-400">{t('noData')}</td></tr>
+                <tr><td colSpan={isRange ? 7 : 6} className="py-12 text-center text-slate-400">{t('noData')}</td></tr>
               ) : (
                 records.map(rec => (
                   <tr key={rec.id} className="hover:bg-slate-50/50 transition-colors">
@@ -184,6 +236,7 @@ export default function AdminAttendancePage() {
                         </div>
                       </div>
                     </td>
+                    {isRange && <td className="px-5 py-3.5 text-slate-500 text-xs">{rec.date}</td>}
                     <td className="px-5 py-3.5 font-mono text-slate-700">{formatTime(rec.check_in)}</td>
                     <td className="px-5 py-3.5 font-mono text-slate-700">{formatTime(rec.check_out)}</td>
                     <td className="px-5 py-3.5 font-semibold text-slate-700">{rec.work_hours ? `${rec.work_hours}h` : '-'}</td>
