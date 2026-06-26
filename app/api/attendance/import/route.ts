@@ -3,7 +3,7 @@ import { getAuthPayload } from '@/lib/auth';
 import { createServerSupabase } from '@/lib/supabase';
 
 const LATE_HOUR = 8;
-const LATE_MINUTE = 0;
+const LATE_MINUTE = 15;
 const BATCH_SIZE = 500;
 
 export const maxDuration = 60;
