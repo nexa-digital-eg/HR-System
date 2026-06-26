@@ -1,8 +1,8 @@
 'use client';
 
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useRef } from 'react';
 import { useLanguage } from '@/lib/i18n';
-import { Plus, X, Search } from 'lucide-react';
+import { Plus, X, Upload, FileUp } from 'lucide-react';
 import { toast } from 'sonner';
 
 interface AttendanceRecord {
@@ -41,6 +41,10 @@ export default function AdminAttendancePage() {
   const [showModal, setShowModal] = useState(false);
   const [form, setForm] = useState({ employee_id: '', date: '', check_in: '', check_out: '', status: 'PRESENT', notes: '' });
   const [saving, setSaving] = useState(false);
+  const [showImport, setShowImport] = useState(false);
+  const [importing, setImporting] = useState(false);
+  const [importResult, setImportResult] = useState<{ created: number; unmatched: number; unmatchedNums: string[]; totalLines: number } | null>(null);
+  const fileRef = useRef<HTMLInputElement>(null);
 
   const fetchRecords = useCallback(() => {
     setLoading(true);
@@ -58,6 +62,27 @@ export default function AdminAttendancePage() {
   const openAdd = () => {
     setForm({ employee_id: '', date, check_in: '', check_out: '', status: 'PRESENT', notes: '' });
     setShowModal(true);
+  };
+
+  const handleImport = async () => {
+    const file = fileRef.current?.files?.[0];
+    if (!file) return toast.error(lang === 'ar' ? 'اختر ملفاً أولاً' : 'Please select a file');
+    setImporting(true);
+    setImportResult(null);
+    try {
+      const fd = new FormData();
+      fd.append('file', file);
+      const res = await fetch('/api/attendance/import', { method: 'POST', body: fd });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error);
+      setImportResult(data);
+      toast.success(lang === 'ar' ? `تم استيراد ${data.created} سجل` : `Imported ${data.created} records`);
+      fetchRecords();
+    } catch (e: unknown) {
+      toast.error(e instanceof Error ? e.message : String(e));
+    } finally {
+      setImporting(false);
+    }
   };
 
   const handleSave = async () => {
@@ -92,10 +117,16 @@ export default function AdminAttendancePage() {
           <h1 className="text-2xl font-bold text-slate-900">{t('attendance')}</h1>
           <p className="text-slate-500 text-sm mt-0.5">{records.length} {t('records')}</p>
         </div>
-        <button onClick={openAdd} className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold px-4 py-2.5 rounded-xl transition-colors shadow-sm shadow-blue-600/30">
-          <Plus size={16} />
-          {t('addRecord')}
-        </button>
+        <div className="flex items-center gap-2">
+          <button onClick={() => { setShowImport(true); setImportResult(null); }} className="flex items-center gap-2 bg-teal-600 hover:bg-teal-700 text-white text-sm font-semibold px-4 py-2.5 rounded-xl transition-colors shadow-sm shadow-teal-600/30">
+            <Upload size={15} />
+            {lang === 'ar' ? 'استيراد بصمة' : 'Import .dat'}
+          </button>
+          <button onClick={openAdd} className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold px-4 py-2.5 rounded-xl transition-colors shadow-sm shadow-blue-600/30">
+            <Plus size={16} />
+            {t('addRecord')}
+          </button>
+        </div>
       </div>
 
       <div className="bg-white rounded-2xl border border-slate-200/80 p-4 shadow-sm flex items-center gap-3">
@@ -169,6 +200,59 @@ export default function AdminAttendancePage() {
           </table>
         </div>
       </div>
+
+      {/* Import modal */}
+      {showImport && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md">
+            <div className="flex items-center justify-between p-6 border-b border-slate-100">
+              <div>
+                <h2 className="text-lg font-bold text-slate-900">{lang === 'ar' ? 'استيراد ملف البصمة' : 'Import Fingerprint File'}</h2>
+                <p className="text-xs text-slate-400 mt-0.5">{lang === 'ar' ? 'ملف .dat من جهاز ZKTeco' : 'ZKTeco .dat attendance file'}</p>
+              </div>
+              <button onClick={() => setShowImport(false)} className="p-2 rounded-lg hover:bg-slate-100 text-slate-400 transition-colors"><X size={18} /></button>
+            </div>
+            <div className="p-6 space-y-4">
+              <label className="flex flex-col items-center justify-center border-2 border-dashed border-slate-200 rounded-xl p-8 cursor-pointer hover:border-teal-400 hover:bg-teal-50/30 transition-colors group">
+                <FileUp size={32} className="text-slate-300 group-hover:text-teal-500 mb-2 transition-colors" />
+                <span className="text-sm font-semibold text-slate-600 group-hover:text-teal-700">
+                  {lang === 'ar' ? 'اضغط لاختيار الملف' : 'Click to select file'}
+                </span>
+                <span className="text-xs text-slate-400 mt-1">.dat</span>
+                <input ref={fileRef} type="file" accept=".dat,.txt" className="hidden" />
+              </label>
+
+              {importResult && (
+                <div className="bg-slate-50 rounded-xl p-4 space-y-2 text-sm">
+                  <div className="flex items-center justify-between">
+                    <span className="text-slate-500">{lang === 'ar' ? 'السجلات المستوردة' : 'Records imported'}</span>
+                    <span className="font-bold text-green-600">{importResult.created}</span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-slate-500">{lang === 'ar' ? 'إجمالي السطور' : 'Total lines'}</span>
+                    <span className="font-semibold text-slate-700">{importResult.totalLines}</span>
+                  </div>
+                  {importResult.unmatched > 0 && (
+                    <div>
+                      <div className="flex items-center justify-between">
+                        <span className="text-slate-500">{lang === 'ar' ? 'أرقام غير مطابقة' : 'Unmatched IDs'}</span>
+                        <span className="font-semibold text-amber-600">{importResult.unmatched}</span>
+                      </div>
+                      <p className="text-xs text-slate-400 mt-1">{importResult.unmatchedNums.join(', ')}</p>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+            <div className="flex items-center justify-end gap-3 p-6 pt-0">
+              <button onClick={() => setShowImport(false)} className="px-5 py-2.5 text-sm font-semibold text-slate-600 hover:bg-slate-100 rounded-xl transition-colors">{t('cancel')}</button>
+              <button onClick={handleImport} disabled={importing} className="px-5 py-2.5 text-sm font-semibold bg-teal-600 hover:bg-teal-700 text-white rounded-xl transition-colors disabled:opacity-60 shadow-sm shadow-teal-600/30">
+                {importing ? (lang === 'ar' ? 'جاري الاستيراد...' : 'Importing...') : (lang === 'ar' ? 'استيراد' : 'Import')}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Add modal */}
       {showModal && (
