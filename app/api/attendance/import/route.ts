@@ -28,7 +28,8 @@ export async function POST(request: Request) {
     const parts = line.trim().split(/\s+/);
     if (parts.length < 3) continue;
     const empNum = parts[0].trim();
-    const dt = new Date(`${parts[1]}T${parts[2]}`);
+    // Parse as Egypt time (UTC+2) so stored UTC is correct
+    const dt = new Date(`${parts[1]}T${parts[2]}+02:00`);
     if (isNaN(dt.getTime())) continue;
     const dateKey = parts[1];
     if (!punches.has(empNum)) punches.set(empNum, new Map());
@@ -64,7 +65,8 @@ export async function POST(request: Request) {
       const workHours = checkOut
         ? Math.round(((last.getTime() - first.getTime()) / 3600000) * 100) / 100
         : null;
-      const h = first.getHours(), m = first.getMinutes();
+      // Use UTC+2 offset hours for late check (getHours returns UTC on server)
+      const h = first.getUTCHours() + 2, m = first.getUTCMinutes();
       const status = (h > LATE_HOUR || (h === LATE_HOUR && m > LATE_MINUTE)) ? 'LATE' : 'PRESENT';
 
       records.push({
