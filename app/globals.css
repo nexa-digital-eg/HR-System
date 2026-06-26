@@ -44,7 +44,7 @@
 @layer components {
   .sidebar-item {
     @apply flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium
-           transition-all duration-150 text-slate-400 hover:text-white hover:bg-white/8
+           transition-all duration-150 text-slate-400 hover:text-white hover:bg-white/10
            cursor-pointer select-none relative;
   }
 
