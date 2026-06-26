@@ -57,7 +57,7 @@ export async function POST(request: Request) {
 
   const empMap = new Map<string, { id: string; startTime: string; grace: number }>(
     (employees || []).map(e => {
-      const shift = e.shifts as { start_time: string; grace_minutes: number } | null;
+      const shift = e.shifts as unknown as { start_time: string; grace_minutes: number } | null;
       return [
         e.employee_number.trim(),
         {
