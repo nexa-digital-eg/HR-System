@@ -41,7 +41,7 @@ export default function EmployeesPage() {
   const [editId, setEditId] = useState<string | null>(null);
   const [form, setForm] = useState({ ...BLANK_FORM });
   const [saving, setSaving] = useState(false);
-  const limit = 10;
+  const [limit, setLimit] = useState(10);
 
   const fetchEmployees = useCallback(() => {
     setLoading(true);
@@ -137,6 +137,17 @@ export default function EmployeesPage() {
         >
           <option value="">{t('allDepartments')}</option>
           {departments.map(d => <option key={d.id} value={d.id}>{lang === 'ar' ? d.name_ar : d.name_en}</option>)}
+        </select>
+        <select
+          value={limit}
+          onChange={e => { setLimit(Number(e.target.value)); setPage(1); }}
+          className="text-sm border border-slate-200 rounded-xl px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-400 text-slate-700"
+        >
+          <option value={10}>10</option>
+          <option value={25}>25</option>
+          <option value={50}>50</option>
+          <option value={100}>100</option>
+          <option value={500}>{lang === 'ar' ? 'عرض الكل' : 'Show All'}</option>
         </select>
       </div>
 
