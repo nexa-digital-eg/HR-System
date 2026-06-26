@@ -71,7 +71,7 @@ export default function EmployeesPage() {
       name_ar: emp.name_ar, name_en: emp.name_en, phone: emp.phone,
       email: emp.email || '', password: '', employee_number: emp.employee_number,
       hire_date: emp.hire_date, basic_salary: String(emp.basic_salary),
-      department_id: '', position_id: '', role: 'EMPLOYEE', status: emp.status,
+      department_id: '', position_id: '', shift_id: '', role: 'EMPLOYEE', status: emp.status,
     });
     setShowModal(true);
   };
