@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useCallback, useRef } from 'react';
 import { useLanguage } from '@/lib/i18n';
-import { Plus, X, Upload, FileUp, Download } from 'lucide-react';
+import { Plus, X, Upload, FileUp, Download, Edit2 } from 'lucide-react';
 import { toast } from 'sonner';
 
 interface AttendanceRecord {
@@ -42,6 +42,7 @@ export default function AdminAttendancePage() {
   const [dateTo, setDateTo] = useState(today);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
+  const [editRecordId, setEditRecordId] = useState<string | null>(null);
   const [form, setForm] = useState({ employee_id: '', date: '', check_in: '', check_out: '', status: 'PRESENT', notes: '' });
   const [saving, setSaving] = useState(false);
   const [showImport, setShowImport] = useState(false);
@@ -64,7 +65,22 @@ export default function AdminAttendancePage() {
   }, []);
 
   const openAdd = () => {
+    setEditRecordId(null);
     setForm({ employee_id: '', date: dateFrom, check_in: '', check_out: '', status: 'PRESENT', notes: '' });
+    setShowModal(true);
+  };
+
+  const openEdit = (rec: AttendanceRecord) => {
+    setEditRecordId(rec.id);
+    const toTime = (iso: string | null) => iso ? new Date(iso).toTimeString().substring(0, 5) : '';
+    setForm({
+      employee_id: '',
+      date: rec.date,
+      check_in: toTime(rec.check_in),
+      check_out: toTime(rec.check_out),
+      status: rec.status,
+      notes: rec.notes || '',
+    });
     setShowModal(true);
   };
 
@@ -89,14 +105,23 @@ export default function AdminAttendancePage() {
     }
   };
 
+  const toISOWithDate = (date: string, time: string) => time ? `${date}T${time}:00+02:00` : null;
+
   const handleSave = async () => {
     setSaving(true);
     try {
-      const res = await fetch('/api/attendance', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(form),
-      });
+      let res: Response;
+      if (editRecordId) {
+        const body = {
+          check_in: toISOWithDate(form.date, form.check_in),
+          check_out: toISOWithDate(form.date, form.check_out),
+          status: form.status,
+          notes: form.notes,
+        };
+        res = await fetch(`/api/attendance/${editRecordId}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+      } else {
+        res = await fetch('/api/attendance', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(form) });
+      }
       const data = await res.json();
       if (!res.ok) throw new Error(data.error);
       toast.success(t('saved'));
@@ -213,13 +238,14 @@ export default function AdminAttendancePage() {
                 <th className="text-start px-5 py-3.5 font-semibold text-slate-600 text-xs">{t('workHours')}</th>
                 <th className="text-start px-5 py-3.5 font-semibold text-slate-600 text-xs">{t('source')}</th>
                 <th className="text-start px-5 py-3.5 font-semibold text-slate-600 text-xs">{t('status')}</th>
+                <th className="text-end px-5 py-3.5 font-semibold text-slate-600 text-xs">{t('actions')}</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-50">
               {loading ? (
-                <tr><td colSpan={isRange ? 7 : 6} className="py-12 text-center"><div className="w-6 h-6 border-2 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto" /></td></tr>
+                <tr><td colSpan={isRange ? 8 : 7} className="py-12 text-center"><div className="w-6 h-6 border-2 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto" /></td></tr>
               ) : records.length === 0 ? (
-                <tr><td colSpan={isRange ? 7 : 6} className="py-12 text-center text-slate-400">{t('noData')}</td></tr>
+                <tr><td colSpan={isRange ? 8 : 7} className="py-12 text-center text-slate-400">{t('noData')}</td></tr>
               ) : (
                 records.map(rec => (
                   <tr key={rec.id} className="hover:bg-slate-50/50 transition-colors">
@@ -245,6 +271,13 @@ export default function AdminAttendancePage() {
                       <span className={`text-xs font-semibold px-2.5 py-1 rounded-full ${STATUS_COLORS[rec.status] || 'bg-slate-100 text-slate-600'}`}>
                         {t(rec.status.toLowerCase() as Parameters<typeof t>[0])}
                       </span>
+                    </td>
+                    <td className="px-5 py-3.5">
+                      <div className="flex items-center justify-end">
+                        <button onClick={() => openEdit(rec)} className="p-1.5 rounded-lg hover:bg-blue-50 text-slate-400 hover:text-blue-600 transition-colors">
+                          <Edit2 size={15} />
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 ))
@@ -307,27 +340,29 @@ export default function AdminAttendancePage() {
         </div>
       )}
 
-      {/* Add modal */}
+      {/* Add/Edit modal */}
       {showModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
           <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md">
             <div className="flex items-center justify-between p-6 border-b border-slate-100">
-              <h2 className="text-lg font-bold text-slate-900">{t('addRecord')}</h2>
+              <h2 className="text-lg font-bold text-slate-900">{editRecordId ? (lang === 'ar' ? 'تعديل سجل الحضور' : 'Edit Record') : t('addRecord')}</h2>
               <button onClick={() => setShowModal(false)} className="p-2 rounded-lg hover:bg-slate-100 text-slate-400 transition-colors"><X size={18} /></button>
             </div>
             <div className="p-6 space-y-4">
-              <div>
-                <label className="block text-xs font-semibold text-slate-600 mb-1.5">{t('employee')}</label>
-                <select value={form.employee_id} onChange={e => setForm(p => ({ ...p, employee_id: e.target.value }))}
-                  className="w-full px-3 py-2.5 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-400">
-                  <option value="">{t('selectEmployee')}</option>
-                  {employees.map(e => <option key={e.id} value={e.id}>{lang === 'ar' ? e.name_ar : e.name_en}</option>)}
-                </select>
-              </div>
+              {!editRecordId && (
+                <div>
+                  <label className="block text-xs font-semibold text-slate-600 mb-1.5">{t('employee')}</label>
+                  <select value={form.employee_id} onChange={e => setForm(p => ({ ...p, employee_id: e.target.value }))}
+                    className="w-full px-3 py-2.5 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-400">
+                    <option value="">{t('selectEmployee')}</option>
+                    {employees.map(e => <option key={e.id} value={e.id}>{lang === 'ar' ? e.name_ar : e.name_en}</option>)}
+                  </select>
+                </div>
+              )}
               <div>
                 <label className="block text-xs font-semibold text-slate-600 mb-1.5">{t('date')}</label>
-                <input type="date" value={form.date} onChange={e => setForm(p => ({ ...p, date: e.target.value }))}
-                  className="w-full px-3 py-2.5 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-400" />
+                <input type="date" value={form.date} onChange={e => setForm(p => ({ ...p, date: e.target.value }))} readOnly={!!editRecordId}
+                  className="w-full px-3 py-2.5 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-400 disabled:bg-slate-50" />
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div>

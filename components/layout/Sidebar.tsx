@@ -20,6 +20,7 @@ const adminLinks = [
   { href: '/admin/leaves', icon: Calendar, key: 'leaves', section: 'requests' },
   { href: '/admin/advances', icon: CreditCard, key: 'advances', section: 'requests' },
   { href: '/admin/attendance', icon: Clock, key: 'attendance', section: 'operations' },
+  { href: '/admin/shifts', icon: Fingerprint, key: 'shifts', section: 'operations' },
   { href: '/admin/reports', icon: BarChart2, key: 'reports', section: 'operations' },
 ];
 
