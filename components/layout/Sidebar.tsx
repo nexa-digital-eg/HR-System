@@ -21,6 +21,7 @@ const adminLinks = [
   { href: '/admin/advances', icon: CreditCard, key: 'advances', section: 'requests' },
   { href: '/admin/attendance', icon: Clock, key: 'attendance', section: 'operations' },
   { href: '/admin/shifts', icon: Fingerprint, key: 'shifts', section: 'operations' },
+  { href: '/admin/night-allowances', icon: Clock, key: 'nightAllowance', section: 'operations' },
   { href: '/admin/reports', icon: BarChart2, key: 'reports', section: 'operations' },
 ];
 

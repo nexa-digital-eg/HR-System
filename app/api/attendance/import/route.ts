@@ -52,18 +52,19 @@ export async function POST(request: Request) {
   // Load employees with their shift info
   const { data: employees } = await supabase
     .from('employees')
-    .select('id, employee_number, shift_id, shifts(start_time, grace_minutes)')
+    .select('id, employee_number, shift_id, shifts(start_time, grace_minutes, is_overnight)')
     .eq('status', 'ACTIVE');
 
-  const empMap = new Map<string, { id: string; startTime: string; grace: number }>(
+  const empMap = new Map<string, { id: string; startTime: string; grace: number; isOvernight: boolean }>(
     (employees || []).map(e => {
-      const shift = e.shifts as unknown as { start_time: string; grace_minutes: number } | null;
+      const shift = e.shifts as unknown as { start_time: string; grace_minutes: number; is_overnight: boolean } | null;
       return [
         e.employee_number.trim(),
         {
           id: e.id,
           startTime: shift?.start_time?.substring(0, 5) ?? `${String(DEFAULT_LATE_HOUR).padStart(2, '0')}:${String(DEFAULT_LATE_MINUTE).padStart(2, '0')}`,
           grace: shift?.grace_minutes ?? 0,
+          isOvernight: shift?.is_overnight ?? false,
         },
       ];
     })
@@ -85,6 +86,7 @@ export async function POST(request: Request) {
         ? Math.round(((last.dt.getTime() - first.dt.getTime()) / 3600000) * 100) / 100
         : null;
       const status = isLate(first.timeStr, emp.startTime, emp.grace) ? 'LATE' : 'PRESENT';
+      const nightAllowance = (emp.isOvernight || (workHours !== null && workHours > 12)) ? 50 : 0;
 
       records.push({
         employee_id: emp.id,
@@ -92,6 +94,7 @@ export async function POST(request: Request) {
         check_in: first.dt.toISOString(),
         check_out: checkOut,
         work_hours: workHours,
+        night_allowance: nightAllowance,
         status,
         source: 'fingerprint',
       });
