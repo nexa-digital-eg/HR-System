@@ -8,6 +8,16 @@ const BATCH_SIZE = 500;
 
 export const maxDuration = 60;
 
+// Compute Egypt UTC offset string for a given date (handles both EET UTC+2 and EEST UTC+3)
+function egyptOffset(dateStr: string): string {
+  const noon = new Date(`${dateStr}T12:00:00Z`);
+  const egHour = Number(
+    new Intl.DateTimeFormat('en-US', { timeZone: 'Africa/Cairo', hour: '2-digit', hour12: false }).format(noon)
+  );
+  const offset = (egHour - 12 + 24) % 24; // 2 in winter, 3 in summer
+  return `+0${offset}:00`;
+}
+
 function isLate(timeStr: string, startTime: string, graceMinutes: number): boolean {
   const [h, m] = timeStr.split(':').map(Number);
   const [sh, sm] = startTime.split(':').map(Number);
@@ -37,8 +47,8 @@ export async function POST(request: Request) {
     if (parts.length < 3) continue;
     const empNum = parts[0].trim();
     const timeStr = parts[2].substring(0, 5); // HH:MM
-    // Parse as Egypt time (UTC+2) so stored UTC is correct
-    const dt = new Date(`${parts[1]}T${parts[2]}+02:00`);
+    // Parse as Egypt local time (UTC+2 winter / UTC+3 summer) so stored UTC is correct
+    const dt = new Date(`${parts[1]}T${parts[2]}${egyptOffset(parts[1])}`);
     if (isNaN(dt.getTime())) continue;
     const dateKey = parts[1];
     if (!punches.has(empNum)) punches.set(empNum, new Map());
