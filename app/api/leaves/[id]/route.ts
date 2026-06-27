@@ -9,7 +9,7 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
   const { id } = await params;
   const { data, error } = await createServerSupabase()
     .from('leave_requests')
-    .select('*, employees(name_ar,name_en,employee_number), leave_types(name_ar,name_en)')
+    .select('*, employees!employee_id(name_ar,name_en,employee_number), leave_types(name_ar,name_en)')
     .eq('id', id)
     .single();
 
@@ -34,7 +34,7 @@ export async function PUT(request: Request, { params }: { params: Promise<{ id: 
 
   const { data: leave } = await supabase
     .from('leave_requests')
-    .select('*, employees(user_id, name_ar, name_en, manager_id)')
+    .select('*, employees!employee_id(user_id, name_ar, name_en, manager_id)')
     .eq('id', id)
     .single();
 

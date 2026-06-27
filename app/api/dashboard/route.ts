@@ -29,8 +29,8 @@ export async function GET(request: Request) {
     supabase.from('attendance').select('*', { count: 'exact', head: true }).eq('date', today).in('status', ['PRESENT', 'LATE']),
     supabase.from('attendance').select('*', { count: 'exact', head: true }).eq('date', today).eq('status', 'ABSENT'),
     supabase.from('payslips').select('net_salary').eq('month', month).eq('year', year),
-    supabase.from('leave_requests').select('*, employees(name_ar, name_en), leave_types(name_ar, name_en)').eq('status', 'PENDING').order('created_at', { ascending: false }).limit(5),
-    supabase.from('advances').select('*, employees(name_ar, name_en)').eq('status', 'PENDING').order('created_at', { ascending: false }).limit(5),
+    supabase.from('leave_requests').select('*, employees!employee_id(name_ar, name_en), leave_types(name_ar, name_en)').eq('status', 'PENDING').order('created_at', { ascending: false }).limit(5),
+    supabase.from('advances').select('*, employees!employee_id(name_ar, name_en)').eq('status', 'PENDING').order('created_at', { ascending: false }).limit(5),
   ]);
 
   const totalMonthlySalary = (payslips || []).reduce((s, p) => s + (Number(p.net_salary) || 0), 0);
