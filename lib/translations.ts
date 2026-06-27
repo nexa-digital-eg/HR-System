@@ -133,6 +133,7 @@ export const translations = {
     passwordsDoNotMatch: 'كلمتا المرور غير متطابقتين', passwordTooShort: 'كلمة المرور قصيرة جداً (8 أحرف على الأقل)',
     notes: 'ملاحظات', source: 'المصدر', status: 'الحالة',
     total_days: 'إجمالي الأيام', used_days: 'الأيام المستخدمة',
+    incomplete: 'لم يستكمل', markAbsent: 'تسوية الغياب', allStatuses: 'كل الحالات',
   },
   en: {
     dashboard: 'Dashboard', employees: 'Employees', payroll: 'Payroll',
@@ -268,6 +269,7 @@ export const translations = {
     passwordsDoNotMatch: 'Passwords do not match', passwordTooShort: 'Password must be at least 8 characters',
     notes: 'Notes', source: 'Source', status: 'Status',
     total_days: 'Total Days', used_days: 'Used Days',
+    incomplete: 'Incomplete', markAbsent: 'Mark Absences', allStatuses: 'All Statuses',
   }
 };
 

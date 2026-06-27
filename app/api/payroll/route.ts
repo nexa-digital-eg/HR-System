@@ -56,6 +56,22 @@ export async function POST(request: Request) {
 
   if (!employees?.length) return NextResponse.json({ error: 'No active employees' }, { status: 400 });
 
+  // Pre-fetch all ABSENT attendance for this month in one query
+  const monthStart = `${year}-${String(month).padStart(2, '0')}-01`;
+  const monthEnd = `${year}-${String(month).padStart(2, '0')}-${new Date(year, month, 0).getDate()}`;
+  const { data: absentRecords } = await supabase
+    .from('attendance')
+    .select('employee_id')
+    .gte('date', monthStart)
+    .lte('date', monthEnd)
+    .eq('status', 'ABSENT');
+
+  // Map employee_id → absent day count
+  const absentMap = new Map<string, number>();
+  for (const r of (absentRecords || [])) {
+    absentMap.set(r.employee_id, (absentMap.get(r.employee_id) || 0) + 1);
+  }
+
   const payslips = [];
   for (const emp of employees) {
     const { data: existing } = await supabase
@@ -82,13 +98,18 @@ export async function POST(request: Request) {
     const housing = Number(emp.housing_allowance) || 0;
     const transport = Number(emp.transport_allowance) || 0;
 
+    // Absence deduction: each absent day = 2× daily rate (يوم بيومين)
+    const absentDays = absentMap.get(emp.id) || 0;
+    const dailyRate = (basic + housing + transport) / 30;
+    const absenceDeduction = Math.round(absentDays * dailyRate * 2 * 100) / 100;
+
     const net = calculateNetSalary({
       basic_salary: basic,
       housing_allowance: housing,
       transport_allowance: transport,
       other_allowances: 0,
       overtime_amount: 0,
-      absence_deduction: 0,
+      absence_deduction: absenceDeduction,
       late_deduction: 0,
       advance_deduction: advanceDeduction,
       other_deductions: 0,
@@ -103,7 +124,7 @@ export async function POST(request: Request) {
       transport_allowance: transport,
       other_allowances: 0,
       overtime_amount: 0,
-      absence_deduction: 0,
+      absence_deduction: absenceDeduction,
       late_deduction: 0,
       advance_deduction: advanceDeduction,
       other_deductions: 0,

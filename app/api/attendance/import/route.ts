@@ -95,7 +95,10 @@ export async function POST(request: Request) {
       const workHours = checkOut
         ? Math.round(((last.dt.getTime() - first.dt.getTime()) / 3600000) * 100) / 100
         : null;
-      const status = isLate(first.timeStr, emp.startTime, emp.grace) ? 'LATE' : 'PRESENT';
+      // INCOMPLETE when only check-in exists (no checkout punch)
+      const status = checkOut
+        ? (isLate(first.timeStr, emp.startTime, emp.grace) ? 'LATE' : 'PRESENT')
+        : 'INCOMPLETE';
 
       let nightAllowance = 0;
       if (emp.isOvernight) {
