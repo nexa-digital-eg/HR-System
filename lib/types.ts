@@ -1,6 +1,6 @@
 export type UserRole = 'SUPER_ADMIN' | 'HR_MANAGER' | 'DEPARTMENT_MANAGER' | 'FINANCE' | 'EMPLOYEE';
 export type EmployeeStatus = 'ACTIVE' | 'INACTIVE' | 'TERMINATED';
-export type RequestStatus = 'PENDING' | 'APPROVED' | 'REJECTED';
+export type RequestStatus = 'PENDING' | 'MANAGER_APPROVED' | 'APPROVED' | 'REJECTED';
 export type AttendanceStatus = 'PRESENT' | 'ABSENT' | 'LATE' | 'HALF_DAY' | 'ON_LEAVE';
 export type PayslipStatus = 'PENDING' | 'PAID';
 

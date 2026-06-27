@@ -19,6 +19,7 @@ interface Employee {
   status: string;
   bank_account_number: string | null;
   shift_id: string | null;
+  manager_id: string | null;
   role: string;
   departments: { id: string; name_ar: string; name_en: string } | null;
   positions: { id: string; name_ar: string; name_en: string } | null;
@@ -29,7 +30,7 @@ interface Shift { id: string; name_ar: string; name_en: string; }
 const BLANK_FORM = {
   name_ar: '', name_en: '', phone: '', email: '', password: '',
   employee_number: '', hire_date: '', basic_salary: '',
-  department_id: '', position_id: '', shift_id: '', role: 'EMPLOYEE', status: 'ACTIVE',
+  department_id: '', position_id: '', shift_id: '', manager_id: '', role: 'EMPLOYEE', status: 'ACTIVE',
   bank_account_number: '',
 };
 
@@ -39,6 +40,7 @@ export default function EmployeesPage() {
   const [departments, setDepartments] = useState<Department[]>([]);
   const [positions, setPositions] = useState<Position[]>([]);
   const [shifts, setShifts] = useState<Shift[]>([]);
+  const [allEmployees, setAllEmployees] = useState<{id:string;name_ar:string;name_en:string}[]>([]);
   const [count, setCount] = useState(0);
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState('');
@@ -78,6 +80,7 @@ export default function EmployeesPage() {
     fetch('/api/departments').then(r => r.json()).then(d => setDepartments(d.data || d || []));
     fetch('/api/positions').then(r => r.json()).then(d => setPositions(d.data || d || []));
     fetch('/api/shifts').then(r => r.json()).then(d => setShifts(d || []));
+    fetch('/api/employees?limit=500').then(r => r.json()).then(d => setAllEmployees(d.data || []));
   }, []);
 
   const openAdd = () => { setEditId(null); setForm({ ...BLANK_FORM }); setShowModal(true); };
@@ -87,7 +90,9 @@ export default function EmployeesPage() {
       name_ar: emp.name_ar, name_en: emp.name_en, phone: emp.phone,
       email: emp.email || '', password: '', employee_number: emp.employee_number,
       hire_date: emp.hire_date, basic_salary: String(emp.basic_salary),
-      department_id: emp.departments?.id || '', position_id: emp.positions?.id || '', shift_id: emp.shift_id || '', role: emp.role || 'EMPLOYEE', status: emp.status,
+      department_id: emp.departments?.id || '', position_id: emp.positions?.id || '',
+      shift_id: emp.shift_id || '', manager_id: emp.manager_id || '',
+      role: emp.role || 'EMPLOYEE', status: emp.status,
       bank_account_number: emp.bank_account_number || '',
     });
     setShowModal(true);
@@ -101,7 +106,7 @@ export default function EmployeesPage() {
       const body: Record<string, unknown> = { ...form, basic_salary: Number(form.basic_salary) };
       if (editId && !form.password) delete body.password;
       // Convert empty UUID strings to null so Postgres doesn't reject them
-      for (const key of ['department_id', 'position_id', 'shift_id'] as const) {
+      for (const key of ['department_id', 'position_id', 'shift_id', 'manager_id'] as const) {
         if (!body[key]) body[key] = null;
       }
       const res = await fetch(url, { method, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
@@ -359,6 +364,16 @@ export default function EmployeesPage() {
                     className="w-full px-3 py-2.5 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-red-800/20 focus:border-red-800">
                     <option value="">{lang === 'ar' ? 'بدون وردية' : 'No shift'}</option>
                     {shifts.map(s => <option key={s.id} value={s.id}>{lang === 'ar' ? s.name_ar : s.name_en}</option>)}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-slate-600 mb-1.5">{t('manager')}</label>
+                  <select value={form.manager_id} onChange={e => setForm(p => ({ ...p, manager_id: e.target.value }))}
+                    className="w-full px-3 py-2.5 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-red-800/20 focus:border-red-800">
+                    <option value="">{t('selectManager')}</option>
+                    {allEmployees.filter(e => e.id !== editId).map(e => (
+                      <option key={e.id} value={e.id}>{lang === 'ar' ? e.name_ar : e.name_en}</option>
+                    ))}
                   </select>
                 </div>
                 <div>

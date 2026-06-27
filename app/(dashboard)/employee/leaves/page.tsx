@@ -71,10 +71,16 @@ export default function EmployeeLeavesPage() {
   const statusBadge = (status: string) => {
     const map: Record<string, string> = {
       PENDING: 'bg-amber-100 text-amber-700 border border-amber-200',
+      MANAGER_APPROVED: 'bg-blue-100 text-blue-700 border border-blue-200',
       APPROVED: 'bg-green-100 text-green-700 border border-green-200',
       REJECTED: 'bg-red-100 text-red-700 border border-red-200',
     };
     return map[status] || 'bg-slate-100 text-slate-600';
+  };
+
+  const statusLabel = (status: string) => {
+    const key = status.toLowerCase() as Parameters<typeof t>[0];
+    return t(key);
   };
 
   return (
@@ -151,8 +157,11 @@ export default function EmployeeLeavesPage() {
                     <td className="px-5 py-3.5 text-slate-500 text-xs">{new Date(leave.created_at).toLocaleDateString(lang === 'ar' ? 'ar-EG' : 'en-GB')}</td>
                     <td className="px-5 py-3.5">
                       <span className={`text-xs font-semibold px-2.5 py-1 rounded-full ${statusBadge(leave.status)}`}>
-                        {t(leave.status.toLowerCase() as Parameters<typeof t>[0])}
+                        {statusLabel(leave.status)}
                       </span>
+                      {leave.status === 'MANAGER_APPROVED' && (
+                        <p className="text-[10px] text-blue-500 mt-0.5">{lang === 'ar' ? 'ينتظر موافقة الإدارة' : 'Awaiting HR approval'}</p>
+                      )}
                     </td>
                   </tr>
                 ))
