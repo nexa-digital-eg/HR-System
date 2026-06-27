@@ -18,8 +18,10 @@ interface Employee {
   basic_salary: number;
   status: string;
   bank_account_number: string | null;
-  departments: { name_ar: string; name_en: string } | null;
-  positions: { name_ar: string; name_en: string } | null;
+  shift_id: string | null;
+  role: string;
+  departments: { id: string; name_ar: string; name_en: string } | null;
+  positions: { id: string; name_ar: string; name_en: string } | null;
 }
 
 interface Shift { id: string; name_ar: string; name_en: string; }
@@ -74,7 +76,7 @@ export default function EmployeesPage() {
       name_ar: emp.name_ar, name_en: emp.name_en, phone: emp.phone,
       email: emp.email || '', password: '', employee_number: emp.employee_number,
       hire_date: emp.hire_date, basic_salary: String(emp.basic_salary),
-      department_id: '', position_id: '', shift_id: '', role: 'EMPLOYEE', status: emp.status,
+      department_id: emp.departments?.id || '', position_id: emp.positions?.id || '', shift_id: emp.shift_id || '', role: emp.role || 'EMPLOYEE', status: emp.status,
       bank_account_number: emp.bank_account_number || '',
     });
     setShowModal(true);
