@@ -56,7 +56,7 @@ export default function EmployeesPage() {
     fetch(`/api/employees?${params}`)
       .then(r => r.json())
       .then(d => { setEmployees(d.data || []); setCount(d.count || 0); setLoading(false); });
-  }, [page, search, deptFilter]);
+  }, [page, search, deptFilter, limit]);
 
   useEffect(() => { fetchEmployees(); }, [fetchEmployees]);
 
