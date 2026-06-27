@@ -2,7 +2,7 @@ export const translations = {
   ar: {
     dashboard: 'لوحة التحكم', employees: 'الموظفون', payroll: 'المرتبات',
     leaves: 'الإجازات', advances: 'السلف', attendance: 'الحضور',
-    reports: 'التقارير', settings: 'الإعدادات', notifications: 'الإشعارات',
+    reports: 'التقارير', shifts: 'الورديات', nightAllowance: 'بدل السهر', settings: 'الإعدادات', notifications: 'الإشعارات',
     profile: 'الملف الشخصي', login: 'تسجيل الدخول', logout: 'تسجيل الخروج',
     phone: 'رقم الهاتف', password: 'كلمة المرور',
     loginTitle: 'مرحباً بك في نظام الموارد البشرية',
@@ -137,7 +137,7 @@ export const translations = {
   en: {
     dashboard: 'Dashboard', employees: 'Employees', payroll: 'Payroll',
     leaves: 'Leaves', advances: 'Advances', attendance: 'Attendance',
-    reports: 'Reports', settings: 'Settings', notifications: 'Notifications',
+    reports: 'Reports', shifts: 'Shifts', nightAllowance: 'Night Allowance', settings: 'Settings', notifications: 'Notifications',
     profile: 'Profile', login: 'Login', logout: 'Logout',
     phone: 'Phone Number', password: 'Password',
     loginTitle: 'Welcome to HR System',

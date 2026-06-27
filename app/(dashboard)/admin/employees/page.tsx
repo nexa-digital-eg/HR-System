@@ -17,14 +17,18 @@ interface Employee {
   hire_date: string;
   basic_salary: number;
   status: string;
+  bank_account_number: string | null;
   departments: { name_ar: string; name_en: string } | null;
   positions: { name_ar: string; name_en: string } | null;
 }
 
+interface Shift { id: string; name_ar: string; name_en: string; }
+
 const BLANK_FORM = {
   name_ar: '', name_en: '', phone: '', email: '', password: '',
   employee_number: '', hire_date: '', basic_salary: '',
-  department_id: '', position_id: '', role: 'EMPLOYEE', status: 'ACTIVE',
+  department_id: '', position_id: '', shift_id: '', role: 'EMPLOYEE', status: 'ACTIVE',
+  bank_account_number: '',
 };
 
 export default function EmployeesPage() {
@@ -32,6 +36,7 @@ export default function EmployeesPage() {
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [departments, setDepartments] = useState<Department[]>([]);
   const [positions, setPositions] = useState<Position[]>([]);
+  const [shifts, setShifts] = useState<Shift[]>([]);
   const [count, setCount] = useState(0);
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState('');
@@ -41,7 +46,7 @@ export default function EmployeesPage() {
   const [editId, setEditId] = useState<string | null>(null);
   const [form, setForm] = useState({ ...BLANK_FORM });
   const [saving, setSaving] = useState(false);
-  const limit = 10;
+  const [limit, setLimit] = useState(10);
 
   const fetchEmployees = useCallback(() => {
     setLoading(true);
@@ -58,6 +63,7 @@ export default function EmployeesPage() {
   useEffect(() => {
     fetch('/api/departments').then(r => r.json()).then(d => setDepartments(d.data || d || []));
     fetch('/api/positions').then(r => r.json()).then(d => setPositions(d.data || d || []));
+    fetch('/api/shifts').then(r => r.json()).then(d => setShifts(d || []));
   }, []);
 
   const openAdd = () => { setEditId(null); setForm({ ...BLANK_FORM }); setShowModal(true); };
@@ -67,7 +73,8 @@ export default function EmployeesPage() {
       name_ar: emp.name_ar, name_en: emp.name_en, phone: emp.phone,
       email: emp.email || '', password: '', employee_number: emp.employee_number,
       hire_date: emp.hire_date, basic_salary: String(emp.basic_salary),
-      department_id: '', position_id: '', role: 'EMPLOYEE', status: emp.status,
+      department_id: '', position_id: '', shift_id: '', role: 'EMPLOYEE', status: emp.status,
+      bank_account_number: emp.bank_account_number || '',
     });
     setShowModal(true);
   };
@@ -137,6 +144,17 @@ export default function EmployeesPage() {
         >
           <option value="">{t('allDepartments')}</option>
           {departments.map(d => <option key={d.id} value={d.id}>{lang === 'ar' ? d.name_ar : d.name_en}</option>)}
+        </select>
+        <select
+          value={limit}
+          onChange={e => { setLimit(Number(e.target.value)); setPage(1); }}
+          className="text-sm border border-slate-200 rounded-xl px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-400 text-slate-700"
+        >
+          <option value={10}>10</option>
+          <option value={25}>25</option>
+          <option value={50}>50</option>
+          <option value={100}>100</option>
+          <option value={500}>{lang === 'ar' ? 'عرض الكل' : 'Show All'}</option>
         </select>
       </div>
 
@@ -236,6 +254,7 @@ export default function EmployeesPage() {
                   { key: 'employee_number', label: t('employeeNumber'), type: 'text' },
                   { key: 'hire_date', label: t('hireDate'), type: 'date' },
                   { key: 'basic_salary', label: t('basicSalary'), type: 'number' },
+                  { key: 'bank_account_number', label: lang === 'ar' ? 'رقم الحساب البنكي' : 'Bank Account Number', type: 'text' },
                 ].map(f => (
                   <div key={f.key}>
                     <label className="block text-xs font-semibold text-slate-600 mb-1.5">{f.label}</label>
@@ -261,6 +280,14 @@ export default function EmployeesPage() {
                     className="w-full px-3 py-2.5 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-400">
                     <option value="">{t('selectPosition')}</option>
                     {positions.map(p => <option key={p.id} value={p.id}>{lang === 'ar' ? p.name_ar : p.name_en}</option>)}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-slate-600 mb-1.5">{lang === 'ar' ? 'الوردية' : 'Shift'}</label>
+                  <select value={form.shift_id} onChange={e => setForm(p => ({ ...p, shift_id: e.target.value }))}
+                    className="w-full px-3 py-2.5 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-400">
+                    <option value="">{lang === 'ar' ? 'بدون وردية' : 'No shift'}</option>
+                    {shifts.map(s => <option key={s.id} value={s.id}>{lang === 'ar' ? s.name_ar : s.name_en}</option>)}
                   </select>
                 </div>
                 <div>
