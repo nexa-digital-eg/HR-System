@@ -4,7 +4,7 @@ import { useLanguage } from '@/lib/i18n';
 import { useRouter, usePathname } from 'next/navigation';
 import {
   LayoutDashboard, Users, DollarSign, Calendar, CreditCard,
-  Clock, BarChart2, LogOut, UserCircle, Fingerprint, ChevronRight,
+  Clock, BarChart2, LogOut, UserCircle, Fingerprint, ChevronRight, UsersRound,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { JWTPayload } from '@/lib/types';
@@ -24,12 +24,13 @@ const adminLinks = [
 ];
 
 const employeeLinks = [
-  { href: '/employee',               icon: LayoutDashboard, key: 'dashboard',    section: 'main' },
-  { href: '/employee/payroll',       icon: DollarSign,      key: 'myPayslips',   section: 'main' },
-  { href: '/employee/leaves',        icon: Calendar,        key: 'myLeaves',     section: 'requests' },
-  { href: '/employee/advances',      icon: CreditCard,      key: 'myAdvances',   section: 'requests' },
-  { href: '/employee/attendance',    icon: Clock,           key: 'myAttendance', section: 'operations' },
-  { href: '/employee/profile',       icon: UserCircle,      key: 'myProfile',    section: 'operations' },
+  { href: '/employee',               icon: LayoutDashboard, key: 'dashboard',     section: 'main' },
+  { href: '/employee/payroll',       icon: DollarSign,      key: 'myPayslips',    section: 'main' },
+  { href: '/employee/leaves',        icon: Calendar,        key: 'myLeaves',      section: 'requests' },
+  { href: '/employee/advances',      icon: CreditCard,      key: 'myAdvances',    section: 'requests' },
+  { href: '/employee/team',          icon: UsersRound,      key: 'teamRequests',  section: 'requests' },
+  { href: '/employee/attendance',    icon: Clock,           key: 'myAttendance',  section: 'operations' },
+  { href: '/employee/profile',       icon: UserCircle,      key: 'myProfile',     section: 'operations' },
 ];
 
 const sectionKeys: Record<string, 'mainMenu' | 'requests' | 'operations'> = {
