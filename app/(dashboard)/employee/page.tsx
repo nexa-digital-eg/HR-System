@@ -43,7 +43,7 @@ export default function EmployeeDashboard() {
 
   const formatTime = (iso: string | null) => {
     if (!iso) return '-';
-    return new Date(iso).toLocaleTimeString(lang === 'ar' ? 'ar-EG' : 'en-GB', { hour: '2-digit', minute: '2-digit' });
+    return new Date(iso).toLocaleTimeString(lang === 'ar' ? 'ar-EG' : 'en-GB', { hour: '2-digit', minute: '2-digit', timeZone: 'Africa/Cairo' });
   };
 
   const formatCurrency = (v: number) =>

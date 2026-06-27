@@ -111,7 +111,12 @@ export default function AdminAttendancePage() {
     }
   };
 
-  const toISOWithDate = (date: string, time: string) => time ? `${date}T${time}:00+02:00` : null;
+  const egyptOffset = (dateStr: string) => {
+    const noon = new Date(`${dateStr}T12:00:00Z`);
+    const egH = Number(new Intl.DateTimeFormat('en-US', { timeZone: 'Africa/Cairo', hour: '2-digit', hour12: false }).format(noon));
+    return `+0${(egH - 12 + 24) % 24}:00`;
+  };
+  const toISOWithDate = (date: string, time: string) => time ? `${date}T${time}:00${egyptOffset(date)}` : null;
 
   const handleSave = async () => {
     setSaving(true);
@@ -151,8 +156,8 @@ export default function AdminAttendancePage() {
       lang === 'ar' ? r.employees.name_ar : r.employees.name_en,
       r.employees.employee_number,
       r.date,
-      r.check_in ? new Date(r.check_in).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }) : '-',
-      r.check_out ? new Date(r.check_out).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }) : '-',
+      r.check_in ? new Date(r.check_in).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', timeZone: 'Africa/Cairo' }) : '-',
+      r.check_out ? new Date(r.check_out).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', timeZone: 'Africa/Cairo' }) : '-',
       r.work_hours ?? '-',
       r.status,
     ]);
@@ -170,7 +175,7 @@ export default function AdminAttendancePage() {
 
   const formatTime = (iso: string | null) => {
     if (!iso) return '-';
-    return new Date(iso).toLocaleTimeString(lang === 'ar' ? 'ar-EG' : 'en-GB', { hour: '2-digit', minute: '2-digit' });
+    return new Date(iso).toLocaleTimeString(lang === 'ar' ? 'ar-EG' : 'en-GB', { hour: '2-digit', minute: '2-digit', timeZone: 'Africa/Cairo' });
   };
 
   // Build employee_number → department_id map for department filtering
