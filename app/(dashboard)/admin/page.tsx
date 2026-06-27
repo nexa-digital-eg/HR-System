@@ -104,9 +104,9 @@ export default function AdminDashboard() {
                     </div>
                     <TrendingUp size={14} style={{ color: '#94a3b8' }} />
                   </div>
-                  <p className="text-[28px] font-black text-slate-900 leading-tight">{card.value}</p>
-                  <p className="text-[13px] font-semibold text-slate-700 mt-1">{card.title}</p>
-                  <p className="text-[11px] text-slate-400 mt-0.5">{card.sub}</p>
+                  <p className="text-[34px] font-black text-slate-900 leading-none tracking-tight">{card.value}</p>
+                  <p className="text-[13px] font-bold text-slate-700 mt-2">{card.title}</p>
+                  <p className="text-[11px] font-medium text-slate-400 mt-0.5">{card.sub}</p>
                 </div>
               );
             })}
@@ -120,16 +120,16 @@ export default function AdminDashboard() {
         {/* Grid */}
         <div className="absolute inset-0 opacity-[0.03]" style={{ backgroundImage: 'linear-gradient(rgba(255,255,255,0.5) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.5) 1px, transparent 1px)', backgroundSize: '30px 30px' }} />
         <div className="relative">
-          <p className="text-[13px] font-semibold mb-1" style={{ color: 'rgba(252,165,165,0.7)' }}>{t('totalMonthlySalary')}</p>
-          <p className="text-4xl font-black text-white">{formatCurrency(stats?.totalMonthlySalary ?? 0)}</p>
-          <p className="text-sm mt-1" style={{ color: 'rgba(252,165,165,0.5)' }}>{t('currentMonth')}</p>
+          <p className="text-[12px] font-bold uppercase tracking-widest mb-2" style={{ color: 'rgba(252,165,165,0.6)' }}>{t('totalMonthlySalary')}</p>
+          <p className="text-5xl font-black text-white leading-none tracking-tight">{formatCurrency(stats?.totalMonthlySalary ?? 0)}</p>
+          <p className="text-xs font-medium mt-2" style={{ color: 'rgba(252,165,165,0.45)' }}>{t('currentMonth')}</p>
         </div>
       </div>
 
       {/* Charts + Recent */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         {/* Attendance chart */}
-        <div className="bg-white rounded-2xl border border-slate-100 p-5 shadow-sm animate-slide-up stagger-6">
+        <div className="content-card animate-slide-up stagger-6">
           <h3 className="font-bold text-slate-800 text-[14px] mb-4">{t('weeklyAttendance')}</h3>
           <ResponsiveContainer width="100%" height={190}>
             <BarChart data={attendanceData} barSize={18}>
@@ -147,7 +147,7 @@ export default function AdminDashboard() {
         </div>
 
         {/* Recent leaves */}
-        <div className="bg-white rounded-2xl border border-slate-100 p-5 shadow-sm animate-slide-up stagger-6">
+        <div className="content-card animate-slide-up stagger-6">
           <div className="flex items-center justify-between mb-4">
             <h3 className="font-bold text-slate-800 text-[14px]">{t('recentLeaveRequests')}</h3>
             <a href="/admin/leaves" className="text-xs font-semibold hover:underline" style={{ color: '#991B1B' }}>{t('viewAll')}</a>
@@ -185,7 +185,7 @@ export default function AdminDashboard() {
       </div>
 
       {/* Recent advances */}
-      <div className="bg-white rounded-2xl border border-slate-100 p-5 shadow-sm animate-slide-up">
+      <div className="content-card animate-slide-up">
         <div className="flex items-center justify-between mb-4">
           <h3 className="font-bold text-slate-800 text-[14px]">{t('recentAdvanceRequests')}</h3>
           <a href="/admin/advances" className="text-xs font-semibold hover:underline" style={{ color: '#991B1B' }}>{t('viewAll')}</a>
