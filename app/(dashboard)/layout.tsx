@@ -14,11 +14,11 @@ export default async function DashboardLayout({ children }: { children: React.Re
   if (!payload) redirect('/login');
 
   return (
-    <div className="min-h-screen bg-slate-50">
+    <div className="min-h-screen" style={{ background: '#f5f5f7' }}>
       <Sidebar user={payload} />
       <div className="ps-64 min-h-screen flex flex-col">
         <Header user={payload} />
-        <main className="flex-1 p-6 max-w-[1400px] w-full">
+        <main className="flex-1 p-6 max-w-[1400px] w-full page-enter">
           {children}
         </main>
       </div>
