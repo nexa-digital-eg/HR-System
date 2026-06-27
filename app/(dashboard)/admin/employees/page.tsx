@@ -167,6 +167,7 @@ export default function EmployeesPage() {
                 <th className="text-start px-5 py-3.5 font-semibold text-slate-600 text-xs">{t('employee')}</th>
                 <th className="text-start px-5 py-3.5 font-semibold text-slate-600 text-xs">{t('department')}</th>
                 <th className="text-start px-5 py-3.5 font-semibold text-slate-600 text-xs">{t('phone')}</th>
+                <th className="text-start px-5 py-3.5 font-semibold text-slate-600 text-xs">{lang === 'ar' ? 'رقم الحساب البنكي' : 'Bank Account'}</th>
                 <th className="text-start px-5 py-3.5 font-semibold text-slate-600 text-xs">{t('basicSalary')}</th>
                 <th className="text-start px-5 py-3.5 font-semibold text-slate-600 text-xs">{t('hireDate')}</th>
                 <th className="text-start px-5 py-3.5 font-semibold text-slate-600 text-xs">{t('status')}</th>
@@ -175,9 +176,9 @@ export default function EmployeesPage() {
             </thead>
             <tbody className="divide-y divide-slate-50">
               {loading ? (
-                <tr><td colSpan={7} className="py-12 text-center"><div className="w-6 h-6 border-2 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto" /></td></tr>
+                <tr><td colSpan={8} className="py-12 text-center"><div className="w-6 h-6 border-2 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto" /></td></tr>
               ) : employees.length === 0 ? (
-                <tr><td colSpan={7} className="py-12 text-center text-slate-400">{t('noData')}</td></tr>
+                <tr><td colSpan={8} className="py-12 text-center text-slate-400">{t('noData')}</td></tr>
               ) : (
                 employees.map(emp => (
                   <tr key={emp.id} className="hover:bg-slate-50/50 transition-colors">
@@ -194,6 +195,7 @@ export default function EmployeesPage() {
                     </td>
                     <td className="px-5 py-3.5 text-slate-600">{emp.departments ? (lang === 'ar' ? emp.departments.name_ar : emp.departments.name_en) : '-'}</td>
                     <td className="px-5 py-3.5 text-slate-600 font-mono text-xs">{emp.phone}</td>
+                    <td className="px-5 py-3.5 text-slate-600 font-mono text-xs">{emp.bank_account_number || '-'}</td>
                     <td className="px-5 py-3.5 text-slate-700 font-semibold">{Number(emp.basic_salary).toLocaleString()} EGP</td>
                     <td className="px-5 py-3.5 text-slate-500">{new Date(emp.hire_date).toLocaleDateString(lang === 'ar' ? 'ar-EG' : 'en-GB')}</td>
                     <td className="px-5 py-3.5">
