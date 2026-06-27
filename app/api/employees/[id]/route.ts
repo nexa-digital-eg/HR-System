@@ -32,6 +32,8 @@ export async function PUT(request: Request, { params }: { params: Promise<{ id: 
   const body = await request.json();
   delete body.user_id;
   delete body.id;
+  delete body.password;
+  delete body.role;
 
   const { data, error } = await createServerSupabase()
     .from('employees')
