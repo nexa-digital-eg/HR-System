@@ -17,6 +17,7 @@ interface Employee {
   hire_date: string;
   basic_salary: number;
   status: string;
+  bank_account_number: string | null;
   departments: { name_ar: string; name_en: string } | null;
   positions: { name_ar: string; name_en: string } | null;
 }
@@ -27,6 +28,7 @@ const BLANK_FORM = {
   name_ar: '', name_en: '', phone: '', email: '', password: '',
   employee_number: '', hire_date: '', basic_salary: '',
   department_id: '', position_id: '', shift_id: '', role: 'EMPLOYEE', status: 'ACTIVE',
+  bank_account_number: '',
 };
 
 export default function EmployeesPage() {
@@ -72,6 +74,7 @@ export default function EmployeesPage() {
       email: emp.email || '', password: '', employee_number: emp.employee_number,
       hire_date: emp.hire_date, basic_salary: String(emp.basic_salary),
       department_id: '', position_id: '', shift_id: '', role: 'EMPLOYEE', status: emp.status,
+      bank_account_number: emp.bank_account_number || '',
     });
     setShowModal(true);
   };
@@ -251,6 +254,7 @@ export default function EmployeesPage() {
                   { key: 'employee_number', label: t('employeeNumber'), type: 'text' },
                   { key: 'hire_date', label: t('hireDate'), type: 'date' },
                   { key: 'basic_salary', label: t('basicSalary'), type: 'number' },
+                  { key: 'bank_account_number', label: lang === 'ar' ? 'رقم الحساب البنكي' : 'Bank Account Number', type: 'text' },
                 ].map(f => (
                   <div key={f.key}>
                     <label className="block text-xs font-semibold text-slate-600 mb-1.5">{f.label}</label>
