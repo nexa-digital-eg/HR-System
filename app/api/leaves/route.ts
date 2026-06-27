@@ -38,11 +38,18 @@ export async function POST(request: Request) {
   }
 
   const body = await request.json();
-  const { leave_type_id, start_date, end_date, days, reason } = body;
+  const { leave_type_id, start_date, end_date, reason } = body;
 
-  if (!leave_type_id || !start_date || !end_date || !days) {
+  if (!leave_type_id || !start_date || !end_date) {
     return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
   }
+
+  const start = new Date(start_date);
+  const end = new Date(end_date);
+  if (isNaN(start.getTime()) || isNaN(end.getTime()) || end < start) {
+    return NextResponse.json({ error: 'Invalid date range' }, { status: 400 });
+  }
+  const days = Math.ceil((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24)) + 1;
 
   const supabase = createServerSupabase();
 

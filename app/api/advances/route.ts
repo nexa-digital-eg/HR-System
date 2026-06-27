@@ -39,8 +39,8 @@ export async function POST(request: Request) {
   const body = await request.json();
   const { amount, reason, installments = 1 } = body;
 
-  if (!amount || !reason) {
-    return NextResponse.json({ error: 'Amount and reason required' }, { status: 400 });
+  if (!amount) {
+    return NextResponse.json({ error: 'Amount is required' }, { status: 400 });
   }
 
   const supabase = createServerSupabase();
