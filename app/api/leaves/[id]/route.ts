@@ -82,9 +82,7 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
 
 export async function PUT(request: Request, { params }: { params: Promise<{ id: string }> }) {
   const payload = await getAuthPayload(request);
-  if (!payload || payload.role === 'EMPLOYEE') {
-    return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
-  }
+  if (!payload) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
   const { id } = await params;
   const { action, rejection_reason } = await request.json();

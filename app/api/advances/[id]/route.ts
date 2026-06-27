@@ -71,9 +71,7 @@ export async function DELETE(request: Request, { params }: { params: Promise<{ i
 
 export async function PUT(request: Request, { params }: { params: Promise<{ id: string }> }) {
   const payload = await getAuthPayload(request);
-  if (!payload || payload.role === 'EMPLOYEE') {
-    return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
-  }
+  if (!payload) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
   const { id } = await params;
   const { action, rejection_reason } = await request.json();
@@ -86,16 +84,46 @@ export async function PUT(request: Request, { params }: { params: Promise<{ id: 
 
   const { data: advance } = await supabase
     .from('advances')
-    .select('*, employees!employee_id(user_id, name_ar, name_en)')
+    .select('*, employees!employee_id(user_id, name_ar, name_en, manager_id)')
     .eq('id', id)
     .single();
 
   if (!advance) return NextResponse.json({ error: 'Not found' }, { status: 404 });
-  if (advance.status !== 'PENDING') {
+
+  const emp = advance.employees as unknown as {
+    user_id: string; name_ar: string; name_en: string; manager_id?: string;
+  };
+
+  const isDirectManager = !!payload.employee_id && payload.employee_id === emp.manager_id;
+  const isHRAdmin = ['HR_MANAGER', 'SUPER_ADMIN', 'FINANCE'].includes(payload.role);
+
+  let newStatus: string;
+
+  if (advance.status === 'PENDING') {
+    if (action === 'approve') {
+      if (isDirectManager) {
+        newStatus = 'MANAGER_APPROVED';
+      } else if (isHRAdmin && !emp.manager_id) {
+        newStatus = 'APPROVED';
+      } else if (isHRAdmin && emp.manager_id) {
+        return NextResponse.json({ error: 'يجب موافقة المدير المباشر أولاً' }, { status: 400 });
+      } else {
+        return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+      }
+    } else {
+      if (!isDirectManager && !isHRAdmin) {
+        return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+      }
+      newStatus = 'REJECTED';
+    }
+  } else if (advance.status === 'MANAGER_APPROVED') {
+    if (!isHRAdmin) {
+      return NextResponse.json({ error: 'يحتاج موافقة الإدارة / الموارد البشرية' }, { status: 403 });
+    }
+    newStatus = action === 'approve' ? 'APPROVED' : 'REJECTED';
+  } else {
     return NextResponse.json({ error: 'Already processed' }, { status: 400 });
   }
-
-  const newStatus = action === 'approve' ? 'APPROVED' : 'REJECTED';
 
   const { data, error } = await supabase
     .from('advances')
@@ -111,22 +139,55 @@ export async function PUT(request: Request, { params }: { params: Promise<{ id: 
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
-  if (advance.employees?.user_id) {
-    const isApproved = action === 'approve';
+  if (emp?.user_id) {
+    let titleAr: string, titleEn: string, bodyAr: string, bodyEn: string;
+    if (newStatus === 'MANAGER_APPROVED') {
+      titleAr = 'وافق مديرك على طلب سلفتك';
+      titleEn = 'Manager Approved Your Advance';
+      bodyAr = 'وافق مديرك المباشر على طلب سلفتك، في انتظار موافقة الإدارة';
+      bodyEn = 'Your direct manager approved your advance request, pending HR final approval';
+    } else if (newStatus === 'APPROVED') {
+      titleAr = 'تمت الموافقة على طلب سلفتك';
+      titleEn = 'Advance Request Approved';
+      bodyAr = `تمت الموافقة النهائية على طلب سلفتك بمبلغ ${advance.amount}`;
+      bodyEn = `Your advance request for ${advance.amount} has been fully approved`;
+    } else {
+      titleAr = 'تم رفض طلب سلفتك';
+      titleEn = 'Advance Request Rejected';
+      bodyAr = `تم رفض طلب سلفتك: ${rejection_reason || ''}`;
+      bodyEn = `Your advance request was rejected: ${rejection_reason || ''}`;
+    }
     await supabase.from('notifications').insert({
-      user_id: advance.employees.user_id,
-      title_ar: isApproved ? 'تمت الموافقة على طلب سلفتك' : 'تم رفض طلب سلفتك',
-      title_en: isApproved ? 'Advance Request Approved' : 'Advance Request Rejected',
-      body_ar: isApproved
-        ? `تمت الموافقة على طلب سلفتك بمبلغ ${advance.amount}`
-        : `تم رفض طلب سلفتك: ${rejection_reason || ''}`,
-      body_en: isApproved
-        ? `Your advance request for ${advance.amount} has been approved`
-        : `Your advance request was rejected: ${rejection_reason || ''}`,
+      user_id: emp.user_id,
+      title_ar: titleAr,
+      title_en: titleEn,
+      body_ar: bodyAr,
+      body_en: bodyEn,
       type: 'advance_update',
       reference_id: id,
       reference_type: 'advance',
     });
+  }
+
+  if (newStatus === 'MANAGER_APPROVED') {
+    const { data: hrUsers } = await supabase
+      .from('users')
+      .select('id')
+      .in('role', ['HR_MANAGER', 'SUPER_ADMIN']);
+    if (hrUsers && hrUsers.length > 0) {
+      await supabase.from('notifications').insert(
+        hrUsers.map((u: { id: string }) => ({
+          user_id: u.id,
+          title_ar: 'طلب سلفة يحتاج موافقتك',
+          title_en: 'Advance Request Awaiting Your Approval',
+          body_ar: `وافق المدير على سلفة ${emp.name_ar}، يتطلب موافقتك النهائية`,
+          body_en: `Manager approved ${emp.name_en}'s advance, your final approval is needed`,
+          type: 'advance_request',
+          reference_id: id,
+          reference_type: 'advance',
+        }))
+      );
+    }
   }
 
   return NextResponse.json(data);

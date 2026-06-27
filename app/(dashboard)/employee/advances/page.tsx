@@ -95,9 +95,10 @@ export default function EmployeeAdvancesPage() {
   const statusBadge = (status: string) => {
     const map: Record<string, string> = {
       PENDING: 'bg-amber-100 text-amber-700 border border-amber-200',
+      MANAGER_APPROVED: 'bg-blue-100 text-blue-700 border border-blue-200',
       APPROVED: 'bg-green-100 text-green-700 border border-green-200',
       REJECTED: 'bg-red-100 text-red-700 border border-red-200',
-      PAID: 'bg-blue-100 text-blue-700 border border-blue-200',
+      PAID: 'bg-purple-100 text-purple-700 border border-purple-200',
     };
     return map[status] || 'bg-slate-100 text-slate-600';
   };
@@ -163,6 +164,9 @@ export default function EmployeeAdvancesPage() {
                       <span className={`text-xs font-semibold px-2.5 py-1 rounded-full ${statusBadge(adv.status)}`}>
                         {t(adv.status.toLowerCase() as Parameters<typeof t>[0])}
                       </span>
+                      {adv.status === 'MANAGER_APPROVED' && (
+                        <p className="text-[10px] text-blue-500 mt-0.5">{lang === 'ar' ? 'ينتظر موافقة الإدارة' : 'Awaiting HR approval'}</p>
+                      )}
                     </td>
                     <td className="px-4 py-3.5">
                       {adv.status === 'PENDING' && (
