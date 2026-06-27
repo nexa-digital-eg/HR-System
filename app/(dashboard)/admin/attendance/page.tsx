@@ -17,11 +17,13 @@ interface AttendanceRecord {
   employees: { name_ar: string; name_en: string; employee_number: string };
 }
 
+interface Department { id: string; name_ar: string; name_en: string; }
 interface Employee {
   id: string;
   name_ar: string;
   name_en: string;
   employee_number: string;
+  department_id?: string;
 }
 
 const STATUS_COLORS: Record<string, string> = {
@@ -38,6 +40,9 @@ export default function AdminAttendancePage() {
   const { t, lang } = useLanguage();
   const [records, setRecords] = useState<AttendanceRecord[]>([]);
   const [employees, setEmployees] = useState<Employee[]>([]);
+  const [departments, setDepartments] = useState<Department[]>([]);
+  const [search, setSearch] = useState('');
+  const [deptFilter, setDeptFilter] = useState('');
   const [dateFrom, setDateFrom] = useState(today);
   const [dateTo, setDateTo] = useState(today);
   const [loading, setLoading] = useState(true);
@@ -61,7 +66,8 @@ export default function AdminAttendancePage() {
   useEffect(() => { fetchRecords(); }, [fetchRecords]);
 
   useEffect(() => {
-    fetch('/api/employees?limit=200').then(r => r.json()).then(d => setEmployees(d.data || []));
+    fetch('/api/employees?limit=500').then(r => r.json()).then(d => setEmployees(d.data || []));
+    fetch('/api/departments').then(r => r.json()).then(d => setDepartments(d.data || d || []));
   }, []);
 
   const openAdd = () => {
@@ -167,6 +173,18 @@ export default function AdminAttendancePage() {
     return new Date(iso).toLocaleTimeString(lang === 'ar' ? 'ar-EG' : 'en-GB', { hour: '2-digit', minute: '2-digit' });
   };
 
+  // Build employee_number → department_id map for department filtering
+  const empNumToDeptId = Object.fromEntries(employees.map(e => [e.employee_number, e.department_id || '']));
+
+  const filteredRecords = records.filter(rec => {
+    const name = lang === 'ar' ? rec.employees.name_ar : rec.employees.name_en;
+    if (search && !name.toLowerCase().includes(search.toLowerCase()) &&
+        !rec.employees.name_ar.toLowerCase().includes(search.toLowerCase()) &&
+        !rec.employees.name_en.toLowerCase().includes(search.toLowerCase())) return false;
+    if (deptFilter && empNumToDeptId[rec.employees.employee_number] !== deptFilter) return false;
+    return true;
+  });
+
   const isRange = dateFrom !== dateTo;
 
   return (
@@ -174,7 +192,7 @@ export default function AdminAttendancePage() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-slate-900">{t('attendance')}</h1>
-          <p className="text-slate-500 text-sm mt-0.5">{records.length} {t('records')}</p>
+          <p className="text-slate-500 text-sm mt-0.5">{filteredRecords.length} {t('records')}</p>
         </div>
         <div className="flex items-center gap-2">
           <button onClick={handleExport} className="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-semibold px-4 py-2.5 rounded-xl transition-colors shadow-sm shadow-emerald-600/30">
@@ -193,29 +211,44 @@ export default function AdminAttendancePage() {
       </div>
 
       <div className="bg-white rounded-2xl border border-slate-200/80 p-4 shadow-sm flex flex-wrap items-center gap-3">
+        {/* Date range */}
         <div className="flex items-center gap-2">
           <label className="text-sm font-semibold text-slate-600">{lang === 'ar' ? 'من:' : 'From:'}</label>
-          <input
-            type="date"
-            value={dateFrom}
-            onChange={e => setDateFrom(e.target.value)}
-            className="text-sm border border-slate-200 rounded-xl px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-400"
-          />
+          <input type="date" value={dateFrom} onChange={e => setDateFrom(e.target.value)}
+            className="text-sm border border-slate-200 rounded-xl px-3 py-2 focus:outline-none focus:ring-2 focus:ring-red-800/20 focus:border-red-800" />
         </div>
         <div className="flex items-center gap-2">
           <label className="text-sm font-semibold text-slate-600">{lang === 'ar' ? 'إلى:' : 'To:'}</label>
-          <input
-            type="date"
-            value={dateTo}
-            min={dateFrom}
-            onChange={e => setDateTo(e.target.value)}
-            className="text-sm border border-slate-200 rounded-xl px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-400"
-          />
+          <input type="date" value={dateTo} min={dateFrom} onChange={e => setDateTo(e.target.value)}
+            className="text-sm border border-slate-200 rounded-xl px-3 py-2 focus:outline-none focus:ring-2 focus:ring-red-800/20 focus:border-red-800" />
         </div>
+
+        {/* Name search */}
+        <div className="relative">
+          <input
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+            placeholder={lang === 'ar' ? 'بحث بالاسم...' : 'Search by name...'}
+            className="text-sm border border-slate-200 rounded-xl px-3 py-2 w-44 focus:outline-none focus:ring-2 focus:ring-red-800/20 focus:border-red-800"
+          />
+          {search && (
+            <button onClick={() => setSearch('')} className="absolute end-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600">
+              <X size={13} />
+            </button>
+          )}
+        </div>
+
+        {/* Department filter */}
+        <select value={deptFilter} onChange={e => setDeptFilter(e.target.value)}
+          className="text-sm border border-slate-200 rounded-xl px-3 py-2 focus:outline-none focus:ring-2 focus:ring-red-800/20 focus:border-red-800 text-slate-700">
+          <option value="">{lang === 'ar' ? 'كل الأقسام' : 'All Departments'}</option>
+          {departments.map(d => <option key={d.id} value={d.id}>{lang === 'ar' ? d.name_ar : d.name_en}</option>)}
+        </select>
+
         {!isRange && (
           <div className="flex items-center gap-2 ms-auto">
             {['PRESENT', 'LATE', 'ABSENT'].map(s => {
-              const cnt = records.filter(r => r.status === s).length;
+              const cnt = filteredRecords.filter(r => r.status === s).length;
               return cnt > 0 ? (
                 <span key={s} className={`text-xs font-bold px-2.5 py-1 rounded-full ${STATUS_COLORS[s]}`}>
                   {cnt} {t(s.toLowerCase() as Parameters<typeof t>[0])}
@@ -244,10 +277,10 @@ export default function AdminAttendancePage() {
             <tbody className="divide-y divide-slate-50">
               {loading ? (
                 <tr><td colSpan={isRange ? 8 : 7} className="py-12 text-center"><div className="w-6 h-6 border-2 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto" /></td></tr>
-              ) : records.length === 0 ? (
+              ) : filteredRecords.length === 0 ? (
                 <tr><td colSpan={isRange ? 8 : 7} className="py-12 text-center text-slate-400">{t('noData')}</td></tr>
               ) : (
-                records.map(rec => (
+                filteredRecords.map(rec => (
                   <tr key={rec.id} className="hover:bg-slate-50/50 transition-colors">
                     <td className="px-5 py-3.5">
                       <div className="flex items-center gap-3">
