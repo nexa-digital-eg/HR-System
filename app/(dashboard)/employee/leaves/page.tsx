@@ -2,13 +2,14 @@
 
 import { useEffect, useState, useCallback } from 'react';
 import { useLanguage } from '@/lib/i18n';
-import { Plus, X, Calendar } from 'lucide-react';
+import { Plus, X, Calendar, Pencil, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 
 interface LeaveType { id: string; name_ar: string; name_en: string; }
 interface LeaveBalance { leave_type_id: string; leave_types: { name_ar: string; name_en: string }; total_days: number; used_days: number; }
 interface LeaveRequest {
   id: string;
+  leave_type_id: string;
   leave_types: { name_ar: string; name_en: string };
   start_date: string;
   end_date: string;
@@ -19,6 +20,8 @@ interface LeaveRequest {
   rejection_reason?: string;
 }
 
+const BLANK = { leave_type_id: '', start_date: '', end_date: '', reason: '' };
+
 export default function EmployeeLeavesPage() {
   const { t, lang } = useLanguage();
   const [leaves, setLeaves] = useState<LeaveRequest[]>([]);
@@ -26,8 +29,10 @@ export default function EmployeeLeavesPage() {
   const [leaveTypes, setLeaveTypes] = useState<LeaveType[]>([]);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
-  const [form, setForm] = useState({ leave_type_id: '', start_date: '', end_date: '', reason: '' });
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [form, setForm] = useState(BLANK);
   const [saving, setSaving] = useState(false);
+  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
 
   const fetchLeaves = useCallback(() => {
     setLoading(true);
@@ -47,8 +52,15 @@ export default function EmployeeLeavesPage() {
   useEffect(() => {
     fetchLeaves();
     fetch('/api/leaves/balances').then(r => r.json()).then(d => setBalances(d.data || [])).catch(() => {});
-    fetch('/api/leave-types').then(r => r.json()).then(d => setLeaveTypes(d.data || d || []));
+    fetch('/api/leave-types').then(r => r.json()).then(d => setLeaveTypes(d.data || d || [])).catch(() => {});
   }, [fetchLeaves]);
+
+  const openCreate = () => { setEditingId(null); setForm(BLANK); setShowModal(true); };
+  const openEdit = (leave: LeaveRequest) => {
+    setEditingId(leave.id);
+    setForm({ leave_type_id: leave.leave_type_id, start_date: leave.start_date, end_date: leave.end_date, reason: leave.reason || '' });
+    setShowModal(true);
+  };
 
   const handleSubmit = async () => {
     if (!form.leave_type_id || !form.start_date || !form.end_date) {
@@ -57,21 +69,37 @@ export default function EmployeeLeavesPage() {
     }
     setSaving(true);
     try {
-      const res = await fetch('/api/leaves', {
-        method: 'POST',
+      const url = editingId ? `/api/leaves/${editingId}` : '/api/leaves';
+      const method = editingId ? 'PATCH' : 'POST';
+      const res = await fetch(url, {
+        method,
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(form),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error);
-      toast.success(t('requestSubmitted'));
+      toast.success(editingId ? t('savedSuccessfully') : t('requestSubmitted'));
       setShowModal(false);
-      setForm({ leave_type_id: '', start_date: '', end_date: '', reason: '' });
+      setForm(BLANK);
+      setEditingId(null);
       fetchLeaves();
     } catch (e: unknown) {
       toast.error(e instanceof Error ? e.message : String(e));
     } finally {
       setSaving(false);
+    }
+  };
+
+  const handleDelete = async (id: string) => {
+    try {
+      const res = await fetch(`/api/leaves/${id}`, { method: 'DELETE' });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error);
+      toast.success(t('deletedSuccessfully'));
+      setConfirmDeleteId(null);
+      fetchLeaves();
+    } catch (e: unknown) {
+      toast.error(e instanceof Error ? e.message : String(e));
     }
   };
 
@@ -85,10 +113,7 @@ export default function EmployeeLeavesPage() {
     return map[status] || 'bg-slate-100 text-slate-600';
   };
 
-  const statusLabel = (status: string) => {
-    const key = status.toLowerCase() as Parameters<typeof t>[0];
-    return t(key);
-  };
+  const statusLabel = (status: string) => t(status.toLowerCase() as Parameters<typeof t>[0]);
 
   return (
     <div className="space-y-5">
@@ -97,7 +122,7 @@ export default function EmployeeLeavesPage() {
           <h1 className="text-2xl font-bold text-slate-900">{t('myLeaves')}</h1>
           <p className="text-slate-500 text-sm mt-0.5">{leaves.length} {t('requests')}</p>
         </div>
-        <button onClick={() => setShowModal(true)} className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold px-4 py-2.5 rounded-xl transition-colors shadow-sm shadow-blue-600/30">
+        <button onClick={openCreate} className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold px-4 py-2.5 rounded-xl transition-colors shadow-sm shadow-blue-600/30">
           <Plus size={16} />
           {t('requestLeave')}
         </button>
@@ -135,14 +160,15 @@ export default function EmployeeLeavesPage() {
                 <th className="text-start px-5 py-3.5 font-semibold text-slate-600 text-xs">{t('reason')}</th>
                 <th className="text-start px-5 py-3.5 font-semibold text-slate-600 text-xs">{t('requestDate')}</th>
                 <th className="text-start px-5 py-3.5 font-semibold text-slate-600 text-xs">{t('status')}</th>
+                <th className="px-5 py-3.5" />
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-50">
               {loading ? (
-                <tr><td colSpan={6} className="py-12 text-center"><div className="w-6 h-6 border-2 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto" /></td></tr>
+                <tr><td colSpan={7} className="py-12 text-center"><div className="w-6 h-6 border-2 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto" /></td></tr>
               ) : leaves.length === 0 ? (
                 <tr>
-                  <td colSpan={6} className="py-12 text-center">
+                  <td colSpan={7} className="py-12 text-center">
                     <Calendar size={32} className="text-slate-300 mx-auto mb-2" />
                     <p className="text-slate-400">{t('noLeaveRequests')}</p>
                   </td>
@@ -157,9 +183,7 @@ export default function EmployeeLeavesPage() {
                     <td className="px-5 py-3.5 font-semibold text-slate-700">{leave.days}</td>
                     <td className="px-5 py-3.5 text-slate-500 max-w-xs">
                       <p className="truncate">{leave.reason || '-'}</p>
-                      {leave.rejection_reason && (
-                        <p className="text-xs text-red-500 mt-0.5 truncate">{leave.rejection_reason}</p>
-                      )}
+                      {leave.rejection_reason && <p className="text-xs text-red-500 mt-0.5 truncate">{leave.rejection_reason}</p>}
                     </td>
                     <td className="px-5 py-3.5 text-slate-500 text-xs">{new Date(leave.created_at).toLocaleDateString(lang === 'ar' ? 'ar-EG' : 'en-GB')}</td>
                     <td className="px-5 py-3.5">
@@ -170,6 +194,18 @@ export default function EmployeeLeavesPage() {
                         <p className="text-[10px] text-blue-500 mt-0.5">{lang === 'ar' ? 'ينتظر موافقة الإدارة' : 'Awaiting HR approval'}</p>
                       )}
                     </td>
+                    <td className="px-4 py-3.5">
+                      {leave.status === 'PENDING' && (
+                        <div className="flex items-center gap-1.5">
+                          <button onClick={() => openEdit(leave)} className="p-1.5 rounded-lg hover:bg-blue-50 text-blue-500 transition-colors" title={t('edit')}>
+                            <Pencil size={14} />
+                          </button>
+                          <button onClick={() => setConfirmDeleteId(leave.id)} className="p-1.5 rounded-lg hover:bg-red-50 text-red-400 transition-colors" title={t('delete')}>
+                            <Trash2 size={14} />
+                          </button>
+                        </div>
+                      )}
+                    </td>
                   </tr>
                 ))
               )}
@@ -178,12 +214,12 @@ export default function EmployeeLeavesPage() {
         </div>
       </div>
 
-      {/* Request modal */}
+      {/* Create / Edit modal */}
       {showModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
           <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md">
             <div className="flex items-center justify-between p-6 border-b border-slate-100">
-              <h2 className="text-lg font-bold text-slate-900">{t('requestLeave')}</h2>
+              <h2 className="text-lg font-bold text-slate-900">{editingId ? t('edit') : t('requestLeave')}</h2>
               <button onClick={() => setShowModal(false)} className="p-2 rounded-lg hover:bg-slate-100 text-slate-400 transition-colors"><X size={18} /></button>
             </div>
             <div className="p-6 space-y-4">
@@ -217,8 +253,25 @@ export default function EmployeeLeavesPage() {
             <div className="flex items-center justify-end gap-3 p-6 pt-0">
               <button onClick={() => setShowModal(false)} className="px-5 py-2.5 text-sm font-semibold text-slate-600 hover:bg-slate-100 rounded-xl transition-colors">{t('cancel')}</button>
               <button onClick={handleSubmit} disabled={saving} className="px-5 py-2.5 text-sm font-semibold bg-blue-600 hover:bg-blue-700 text-white rounded-xl transition-colors disabled:opacity-60 shadow-sm shadow-blue-600/30">
-                {saving ? t('submitting') : t('submit')}
+                {saving ? t('saving') : editingId ? t('save') : t('submit')}
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Delete confirmation */}
+      {confirmDeleteId && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm p-6 text-center">
+            <div className="w-12 h-12 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
+              <Trash2 size={22} className="text-red-500" />
+            </div>
+            <h3 className="text-base font-bold text-slate-900 mb-1">{t('delete')} {lang === 'ar' ? 'الطلب' : 'Request'}</h3>
+            <p className="text-sm text-slate-500 mb-5">{t('confirmDelete')}</p>
+            <div className="flex gap-3 justify-center">
+              <button onClick={() => setConfirmDeleteId(null)} className="px-5 py-2.5 text-sm font-semibold text-slate-600 hover:bg-slate-100 rounded-xl transition-colors">{t('cancel')}</button>
+              <button onClick={() => handleDelete(confirmDeleteId)} className="px-5 py-2.5 text-sm font-semibold bg-red-600 hover:bg-red-700 text-white rounded-xl transition-colors shadow-sm shadow-red-600/30">{t('delete')}</button>
             </div>
           </div>
         </div>

@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useCallback } from 'react';
 import { useLanguage } from '@/lib/i18n';
-import { Plus, X, CreditCard } from 'lucide-react';
+import { Plus, X, CreditCard, Pencil, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 
 interface Advance {
@@ -18,13 +18,17 @@ interface Advance {
   rejection_reason?: string;
 }
 
+const BLANK = { amount: '', reason: '', installments: '1' };
+
 export default function EmployeeAdvancesPage() {
   const { t, lang } = useLanguage();
   const [advances, setAdvances] = useState<Advance[]>([]);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
-  const [form, setForm] = useState({ amount: '', reason: '', installments: '1' });
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [form, setForm] = useState(BLANK);
   const [saving, setSaving] = useState(false);
+  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
 
   const fetchAdvances = useCallback(() => {
     setLoading(true);
@@ -43,28 +47,48 @@ export default function EmployeeAdvancesPage() {
 
   useEffect(() => { fetchAdvances(); }, [fetchAdvances]);
 
+  const openCreate = () => { setEditingId(null); setForm(BLANK); setShowModal(true); };
+  const openEdit = (adv: Advance) => {
+    setEditingId(adv.id);
+    setForm({ amount: String(adv.amount), reason: adv.reason || '', installments: String(adv.installments) });
+    setShowModal(true);
+  };
+
   const handleSubmit = async () => {
-    if (!form.amount || !form.reason) {
-      toast.error(t('fillRequired'));
-      return;
-    }
+    if (!form.amount) { toast.error(t('fillRequired')); return; }
     setSaving(true);
     try {
-      const res = await fetch('/api/advances', {
-        method: 'POST',
+      const url = editingId ? `/api/advances/${editingId}` : '/api/advances';
+      const method = editingId ? 'PATCH' : 'POST';
+      const res = await fetch(url, {
+        method,
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ amount: Number(form.amount), reason: form.reason, installments: Number(form.installments) }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error);
-      toast.success(t('requestSubmitted'));
+      toast.success(editingId ? t('savedSuccessfully') : t('requestSubmitted'));
       setShowModal(false);
-      setForm({ amount: '', reason: '', installments: '1' });
+      setForm(BLANK);
+      setEditingId(null);
       fetchAdvances();
     } catch (e: unknown) {
       toast.error(e instanceof Error ? e.message : String(e));
     } finally {
       setSaving(false);
+    }
+  };
+
+  const handleDelete = async (id: string) => {
+    try {
+      const res = await fetch(`/api/advances/${id}`, { method: 'DELETE' });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error);
+      toast.success(t('deletedSuccessfully'));
+      setConfirmDeleteId(null);
+      fetchAdvances();
+    } catch (e: unknown) {
+      toast.error(e instanceof Error ? e.message : String(e));
     }
   };
 
@@ -92,7 +116,7 @@ export default function EmployeeAdvancesPage() {
           <h1 className="text-2xl font-bold text-slate-900">{t('myAdvances')}</h1>
           <p className="text-slate-500 text-sm mt-0.5">{advances.length} {t('requests')}</p>
         </div>
-        <button onClick={() => setShowModal(true)} className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold px-4 py-2.5 rounded-xl transition-colors shadow-sm shadow-blue-600/30">
+        <button onClick={openCreate} className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold px-4 py-2.5 rounded-xl transition-colors shadow-sm shadow-blue-600/30">
           <Plus size={16} />
           {t('requestAdvance')}
         </button>
@@ -110,14 +134,15 @@ export default function EmployeeAdvancesPage() {
                 <th className="text-start px-5 py-3.5 font-semibold text-slate-600 text-xs">{t('reason')}</th>
                 <th className="text-start px-5 py-3.5 font-semibold text-slate-600 text-xs">{t('date')}</th>
                 <th className="text-start px-5 py-3.5 font-semibold text-slate-600 text-xs">{t('status')}</th>
+                <th className="px-5 py-3.5" />
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-50">
               {loading ? (
-                <tr><td colSpan={7} className="py-12 text-center"><div className="w-6 h-6 border-2 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto" /></td></tr>
+                <tr><td colSpan={8} className="py-12 text-center"><div className="w-6 h-6 border-2 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto" /></td></tr>
               ) : advances.length === 0 ? (
                 <tr>
-                  <td colSpan={7} className="py-12 text-center">
+                  <td colSpan={8} className="py-12 text-center">
                     <CreditCard size={32} className="text-slate-300 mx-auto mb-2" />
                     <p className="text-slate-400">{t('noAdvanceRequests')}</p>
                   </td>
@@ -130,7 +155,7 @@ export default function EmployeeAdvancesPage() {
                     <td className="px-5 py-3.5 text-green-600 font-medium">{formatCurrency(adv.paid_amount)}</td>
                     <td className="px-5 py-3.5 text-orange-600 font-medium">{formatCurrency(adv.remaining_amount)}</td>
                     <td className="px-5 py-3.5 text-slate-500 max-w-xs">
-                      <p className="truncate">{adv.reason}</p>
+                      <p className="truncate">{adv.reason || '-'}</p>
                       {adv.rejection_reason && <p className="text-xs text-red-500 mt-0.5 truncate">{adv.rejection_reason}</p>}
                     </td>
                     <td className="px-5 py-3.5 text-slate-500 text-xs">{new Date(adv.created_at).toLocaleDateString(lang === 'ar' ? 'ar-EG' : 'en-GB')}</td>
@@ -138,6 +163,18 @@ export default function EmployeeAdvancesPage() {
                       <span className={`text-xs font-semibold px-2.5 py-1 rounded-full ${statusBadge(adv.status)}`}>
                         {t(adv.status.toLowerCase() as Parameters<typeof t>[0])}
                       </span>
+                    </td>
+                    <td className="px-4 py-3.5">
+                      {adv.status === 'PENDING' && (
+                        <div className="flex items-center gap-1.5">
+                          <button onClick={() => openEdit(adv)} className="p-1.5 rounded-lg hover:bg-blue-50 text-blue-500 transition-colors" title={t('edit')}>
+                            <Pencil size={14} />
+                          </button>
+                          <button onClick={() => setConfirmDeleteId(adv.id)} className="p-1.5 rounded-lg hover:bg-red-50 text-red-400 transition-colors" title={t('delete')}>
+                            <Trash2 size={14} />
+                          </button>
+                        </div>
+                      )}
                     </td>
                   </tr>
                 ))
@@ -147,12 +184,12 @@ export default function EmployeeAdvancesPage() {
         </div>
       </div>
 
-      {/* Request modal */}
+      {/* Create / Edit modal */}
       {showModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
           <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md">
             <div className="flex items-center justify-between p-6 border-b border-slate-100">
-              <h2 className="text-lg font-bold text-slate-900">{t('requestAdvance')}</h2>
+              <h2 className="text-lg font-bold text-slate-900">{editingId ? t('edit') : t('requestAdvance')}</h2>
               <button onClick={() => setShowModal(false)} className="p-2 rounded-lg hover:bg-slate-100 text-slate-400 transition-colors"><X size={18} /></button>
             </div>
             <div className="p-6 space-y-4">
@@ -182,8 +219,25 @@ export default function EmployeeAdvancesPage() {
             <div className="flex items-center justify-end gap-3 p-6 pt-0">
               <button onClick={() => setShowModal(false)} className="px-5 py-2.5 text-sm font-semibold text-slate-600 hover:bg-slate-100 rounded-xl transition-colors">{t('cancel')}</button>
               <button onClick={handleSubmit} disabled={saving} className="px-5 py-2.5 text-sm font-semibold bg-blue-600 hover:bg-blue-700 text-white rounded-xl transition-colors disabled:opacity-60 shadow-sm shadow-blue-600/30">
-                {saving ? t('submitting') : t('submit')}
+                {saving ? t('saving') : editingId ? t('save') : t('submit')}
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Delete confirmation */}
+      {confirmDeleteId && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm p-6 text-center">
+            <div className="w-12 h-12 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
+              <Trash2 size={22} className="text-red-500" />
+            </div>
+            <h3 className="text-base font-bold text-slate-900 mb-1">{t('delete')} {lang === 'ar' ? 'الطلب' : 'Request'}</h3>
+            <p className="text-sm text-slate-500 mb-5">{t('confirmDelete')}</p>
+            <div className="flex gap-3 justify-center">
+              <button onClick={() => setConfirmDeleteId(null)} className="px-5 py-2.5 text-sm font-semibold text-slate-600 hover:bg-slate-100 rounded-xl transition-colors">{t('cancel')}</button>
+              <button onClick={() => handleDelete(confirmDeleteId)} className="px-5 py-2.5 text-sm font-semibold bg-red-600 hover:bg-red-700 text-white rounded-xl transition-colors shadow-sm shadow-red-600/30">{t('delete')}</button>
             </div>
           </div>
         </div>

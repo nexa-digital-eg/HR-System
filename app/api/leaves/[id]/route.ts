@@ -2,6 +2,69 @@ import { NextResponse } from 'next/server';
 import { getAuthPayload } from '@/lib/auth';
 import { createServerSupabase } from '@/lib/supabase';
 
+export async function PATCH(request: Request, { params }: { params: Promise<{ id: string }> }) {
+  const payload = await getAuthPayload(request);
+  if (!payload || !payload.employee_id) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+
+  const { id } = await params;
+  const body = await request.json();
+  const { leave_type_id, start_date, end_date, reason } = body;
+
+  if (!leave_type_id || !start_date || !end_date) {
+    return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
+  }
+
+  const start = new Date(start_date);
+  const end = new Date(end_date);
+  if (isNaN(start.getTime()) || isNaN(end.getTime()) || end < start) {
+    return NextResponse.json({ error: 'Invalid date range' }, { status: 400 });
+  }
+  const days = Math.ceil((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24)) + 1;
+
+  const supabase = createServerSupabase();
+  const { data: leave } = await supabase
+    .from('leave_requests')
+    .select('id, employee_id, status')
+    .eq('id', id)
+    .single();
+
+  if (!leave) return NextResponse.json({ error: 'Not found' }, { status: 404 });
+  if (leave.employee_id !== payload.employee_id) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+  if (leave.status !== 'PENDING') return NextResponse.json({ error: 'لا يمكن تعديل طلب تمت معالجته' }, { status: 400 });
+
+  const { data, error } = await supabase
+    .from('leave_requests')
+    .update({ leave_type_id, start_date, end_date, days, reason })
+    .eq('id', id)
+    .select('*, leave_types(name_ar,name_en)')
+    .single();
+
+  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  return NextResponse.json(data);
+}
+
+export async function DELETE(request: Request, { params }: { params: Promise<{ id: string }> }) {
+  const payload = await getAuthPayload(request);
+  if (!payload || !payload.employee_id) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+
+  const { id } = await params;
+  const supabase = createServerSupabase();
+
+  const { data: leave } = await supabase
+    .from('leave_requests')
+    .select('id, employee_id, status')
+    .eq('id', id)
+    .single();
+
+  if (!leave) return NextResponse.json({ error: 'Not found' }, { status: 404 });
+  if (leave.employee_id !== payload.employee_id) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+  if (leave.status !== 'PENDING') return NextResponse.json({ error: 'لا يمكن حذف طلب تمت معالجته' }, { status: 400 });
+
+  const { error } = await supabase.from('leave_requests').delete().eq('id', id);
+  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  return NextResponse.json({ success: true });
+}
+
 export async function GET(request: Request, { params }: { params: Promise<{ id: string }> }) {
   const payload = await getAuthPayload(request);
   if (!payload) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
