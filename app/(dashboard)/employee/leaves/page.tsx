@@ -31,10 +31,17 @@ export default function EmployeeLeavesPage() {
 
   const fetchLeaves = useCallback(() => {
     setLoading(true);
-    fetch('/api/leaves?limit=50').then(r => r.json()).then(d => {
-      setLeaves(d.data || []);
-      setLoading(false);
-    });
+    fetch('/api/leaves?limit=50')
+      .then(r => r.json())
+      .then(d => {
+        if (d.error) console.error('Leaves API error:', d.error);
+        setLeaves(d.data || []);
+        setLoading(false);
+      })
+      .catch(err => {
+        console.error('Leaves fetch error:', err);
+        setLoading(false);
+      });
   }, []);
 
   useEffect(() => {

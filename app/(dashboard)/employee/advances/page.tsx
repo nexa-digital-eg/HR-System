@@ -28,10 +28,17 @@ export default function EmployeeAdvancesPage() {
 
   const fetchAdvances = useCallback(() => {
     setLoading(true);
-    fetch('/api/advances?limit=50').then(r => r.json()).then(d => {
-      setAdvances(d.data || []);
-      setLoading(false);
-    });
+    fetch('/api/advances?limit=50')
+      .then(r => r.json())
+      .then(d => {
+        if (d.error) console.error('Advances API error:', d.error);
+        setAdvances(d.data || []);
+        setLoading(false);
+      })
+      .catch(err => {
+        console.error('Advances fetch error:', err);
+        setLoading(false);
+      });
   }, []);
 
   useEffect(() => { fetchAdvances(); }, [fetchAdvances]);

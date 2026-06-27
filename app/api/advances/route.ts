@@ -2,6 +2,8 @@ import { NextResponse } from 'next/server';
 import { getAuthPayload } from '@/lib/auth';
 import { createServerSupabase } from '@/lib/supabase';
 
+export const dynamic = 'force-dynamic';
+
 export async function GET(request: Request) {
   const payload = await getAuthPayload(request);
   if (!payload) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
