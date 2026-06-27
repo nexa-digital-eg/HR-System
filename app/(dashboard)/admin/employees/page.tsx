@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useCallback } from 'react';
 import { useLanguage } from '@/lib/i18n';
-import { Search, Plus, Edit2, Trash2, X, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Search, Plus, Edit2, Trash2, X, ChevronLeft, ChevronRight, Eye, EyeOff } from 'lucide-react';
 import { toast } from 'sonner';
 
 interface Department { id: string; name_ar: string; name_en: string; }
@@ -47,6 +47,7 @@ export default function EmployeesPage() {
   const [form, setForm] = useState({ ...BLANK_FORM });
   const [saving, setSaving] = useState(false);
   const [limit, setLimit] = useState(10);
+  const [showPassword, setShowPassword] = useState(false);
 
   const fetchEmployees = useCallback(() => {
     setLoading(true);
@@ -84,8 +85,12 @@ export default function EmployeesPage() {
     try {
       const url = editId ? `/api/employees/${editId}` : '/api/employees';
       const method = editId ? 'PUT' : 'POST';
-      const body = { ...form, basic_salary: Number(form.basic_salary) };
-      if (editId && !form.password) delete (body as Record<string, unknown>).password;
+      const body: Record<string, unknown> = { ...form, basic_salary: Number(form.basic_salary) };
+      if (editId && !form.password) delete body.password;
+      // Convert empty UUID strings to null so Postgres doesn't reject them
+      for (const key of ['department_id', 'position_id', 'shift_id'] as const) {
+        if (!body[key]) body[key] = null;
+      }
       const res = await fetch(url, { method, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Error');
@@ -248,26 +253,47 @@ export default function EmployeesPage() {
             <div className="p-6 space-y-4">
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 {[
-                  { key: 'name_ar', label: t('nameAr'), type: 'text' },
+                  { key: 'name_ar', label: t('nameAr'), type: 'text', required: true },
                   { key: 'name_en', label: t('nameEn'), type: 'text' },
-                  { key: 'phone', label: t('phone'), type: 'tel' },
+                  { key: 'phone', label: t('phone'), type: 'tel', required: true },
                   { key: 'email', label: t('email'), type: 'email' },
-                  { key: 'password', label: editId ? t('newPassword') : t('password'), type: 'password' },
-                  { key: 'employee_number', label: t('employeeNumber'), type: 'text' },
-                  { key: 'hire_date', label: t('hireDate'), type: 'date' },
-                  { key: 'basic_salary', label: t('basicSalary'), type: 'number' },
+                  { key: 'employee_number', label: t('employeeNumber'), type: 'text', required: true },
+                  { key: 'hire_date', label: t('hireDate'), type: 'date', required: true },
+                  { key: 'basic_salary', label: t('basicSalary'), type: 'number', required: true },
                   { key: 'bank_account_number', label: lang === 'ar' ? 'رقم الحساب البنكي' : 'Bank Account Number', type: 'text' },
                 ].map(f => (
                   <div key={f.key}>
-                    <label className="block text-xs font-semibold text-slate-600 mb-1.5">{f.label}</label>
+                    <label className="block text-xs font-semibold text-slate-600 mb-1.5">
+                      {f.label}{f.required && <span className="text-red-600 ms-0.5">*</span>}
+                    </label>
                     <input
                       type={f.type}
-                      value={form[f.key as keyof typeof form]}
+                      value={form[f.key as keyof typeof form] ?? ''}
                       onChange={e => setForm(p => ({ ...p, [f.key]: e.target.value }))}
                       className="w-full px-3 py-2.5 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-red-800/20 focus:border-red-800"
                     />
                   </div>
                 ))}
+                {/* Password with show/hide toggle */}
+                <div>
+                  <label className="block text-xs font-semibold text-slate-600 mb-1.5">
+                    {editId ? t('newPassword') : t('password')}
+                    {!editId && <span className="text-red-600 ms-0.5">*</span>}
+                    {editId && <span className="text-slate-400 font-normal ms-1">({lang === 'ar' ? 'اتركه فارغاً للإبقاء على القديم' : 'leave blank to keep current'})</span>}
+                  </label>
+                  <div className="relative">
+                    <input
+                      type={showPassword ? 'text' : 'password'}
+                      value={form.password}
+                      onChange={e => setForm(p => ({ ...p, password: e.target.value }))}
+                      className="w-full px-3 py-2.5 pe-10 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-red-800/20 focus:border-red-800"
+                    />
+                    <button type="button" onClick={() => setShowPassword(s => !s)}
+                      className="absolute end-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors">
+                      {showPassword ? <EyeOff size={15} /> : <Eye size={15} />}
+                    </button>
+                  </div>
+                </div>
                 <div>
                   <label className="block text-xs font-semibold text-slate-600 mb-1.5">{t('department')}</label>
                   <select value={form.department_id} onChange={e => setForm(p => ({ ...p, department_id: e.target.value }))}
