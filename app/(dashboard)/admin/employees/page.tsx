@@ -1,8 +1,8 @@
 'use client';
 
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useRef } from 'react';
 import { useLanguage } from '@/lib/i18n';
-import { Search, Plus, Edit2, Trash2, X, ChevronLeft, ChevronRight, Eye, EyeOff } from 'lucide-react';
+import { Search, Plus, Edit2, Trash2, X, ChevronLeft, ChevronRight, Eye, EyeOff, SlidersHorizontal, Check } from 'lucide-react';
 import { toast } from 'sonner';
 
 interface Department { id: string; name_ar: string; name_en: string; }
@@ -50,6 +50,17 @@ export default function EmployeesPage() {
   const [saving, setSaving] = useState(false);
   const [limit, setLimit] = useState(10);
   const [showPassword, setShowPassword] = useState(false);
+  const [colsOpen, setColsOpen] = useState(false);
+  const [visibleCols, setVisibleCols] = useState({
+    department: true, phone: true, bank_account: true,
+    basic_salary: true, hire_date: true, status: true,
+  });
+  const colsRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const handler = (e: MouseEvent) => { if (colsRef.current && !colsRef.current.contains(e.target as Node)) setColsOpen(false); };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, []);
 
   const fetchEmployees = useCallback(() => {
     setLoading(true);
@@ -163,6 +174,36 @@ export default function EmployeesPage() {
           <option value={100}>100</option>
           <option value={500}>{lang === 'ar' ? 'عرض الكل' : 'Show All'}</option>
         </select>
+
+        {/* Column visibility toggle */}
+        <div className="relative" ref={colsRef}>
+          <button onClick={() => setColsOpen(o => !o)}
+            className="flex items-center gap-2 text-sm font-semibold px-3.5 py-2 rounded-xl border border-slate-200 text-slate-600 hover:bg-slate-50 transition-colors">
+            <SlidersHorizontal size={14} />
+            {lang === 'ar' ? 'الأعمدة' : 'Columns'}
+          </button>
+          {colsOpen && (
+            <div className="absolute end-0 top-full mt-2 w-52 bg-white rounded-xl border border-slate-200 shadow-lg z-20 p-2">
+              {([
+                { key: 'department',   label: lang === 'ar' ? 'القسم'               : 'Department'   },
+                { key: 'phone',        label: lang === 'ar' ? 'رقم الهاتف'          : 'Phone'        },
+                { key: 'bank_account', label: lang === 'ar' ? 'رقم الحساب البنكي'   : 'Bank Account' },
+                { key: 'basic_salary', label: lang === 'ar' ? 'الراتب الأساسي'      : 'Basic Salary' },
+                { key: 'hire_date',    label: lang === 'ar' ? 'تاريخ التعيين'       : 'Hire Date'    },
+                { key: 'status',       label: lang === 'ar' ? 'الحالة'              : 'Status'       },
+              ] as { key: keyof typeof visibleCols; label: string }[]).map(col => (
+                <button key={col.key} onClick={() => setVisibleCols(v => ({ ...v, [col.key]: !v[col.key] }))}
+                  className="flex items-center justify-between w-full px-3 py-2 rounded-lg text-sm text-slate-700 hover:bg-slate-50 transition-colors">
+                  {col.label}
+                  <span className={`w-4 h-4 rounded flex items-center justify-center border transition-colors ${visibleCols[col.key] ? 'border-red-700' : 'border-slate-300'}`}
+                    style={visibleCols[col.key] ? { background: '#991B1B' } : {}}>
+                    {visibleCols[col.key] && <Check size={10} className="text-white" />}
+                  </span>
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
       </div>
 
       {/* Table */}
@@ -172,20 +213,20 @@ export default function EmployeesPage() {
             <thead>
               <tr className="bg-slate-50 border-b border-slate-100">
                 <th className="text-start px-5 py-3.5 font-semibold text-slate-600 text-xs">{t('employee')}</th>
-                <th className="text-start px-5 py-3.5 font-semibold text-slate-600 text-xs">{t('department')}</th>
-                <th className="text-start px-5 py-3.5 font-semibold text-slate-600 text-xs">{t('phone')}</th>
-                <th className="text-start px-5 py-3.5 font-semibold text-slate-600 text-xs">{lang === 'ar' ? 'رقم الحساب البنكي' : 'Bank Account'}</th>
-                <th className="text-start px-5 py-3.5 font-semibold text-slate-600 text-xs">{t('basicSalary')}</th>
-                <th className="text-start px-5 py-3.5 font-semibold text-slate-600 text-xs">{t('hireDate')}</th>
-                <th className="text-start px-5 py-3.5 font-semibold text-slate-600 text-xs">{t('status')}</th>
+                {visibleCols.department   && <th className="text-start px-5 py-3.5 font-semibold text-slate-600 text-xs">{t('department')}</th>}
+                {visibleCols.phone        && <th className="text-start px-5 py-3.5 font-semibold text-slate-600 text-xs">{t('phone')}</th>}
+                {visibleCols.bank_account && <th className="text-start px-5 py-3.5 font-semibold text-slate-600 text-xs">{lang === 'ar' ? 'رقم الحساب البنكي' : 'Bank Account'}</th>}
+                {visibleCols.basic_salary && <th className="text-start px-5 py-3.5 font-semibold text-slate-600 text-xs">{t('basicSalary')}</th>}
+                {visibleCols.hire_date    && <th className="text-start px-5 py-3.5 font-semibold text-slate-600 text-xs">{t('hireDate')}</th>}
+                {visibleCols.status       && <th className="text-start px-5 py-3.5 font-semibold text-slate-600 text-xs">{t('status')}</th>}
                 <th className="text-end px-5 py-3.5 font-semibold text-slate-600 text-xs">{t('actions')}</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-50">
               {loading ? (
-                <tr><td colSpan={8} className="py-12 text-center"><div className="w-6 h-6 border-2 border-red-800 border-t-transparent rounded-full animate-spin mx-auto" /></td></tr>
+                <tr><td colSpan={2 + Object.values(visibleCols).filter(Boolean).length} className="py-12 text-center"><div className="w-6 h-6 border-2 border-red-800 border-t-transparent rounded-full animate-spin mx-auto" /></td></tr>
               ) : employees.length === 0 ? (
-                <tr><td colSpan={8} className="py-12 text-center text-slate-400">{t('noData')}</td></tr>
+                <tr><td colSpan={2 + Object.values(visibleCols).filter(Boolean).length} className="py-12 text-center text-slate-400">{t('noData')}</td></tr>
               ) : (
                 employees.map(emp => (
                   <tr key={emp.id} className="hover:bg-slate-50/50 transition-colors">
@@ -200,16 +241,16 @@ export default function EmployeesPage() {
                         </div>
                       </div>
                     </td>
-                    <td className="px-5 py-3.5 text-slate-600">{emp.departments ? (lang === 'ar' ? emp.departments.name_ar : emp.departments.name_en) : '-'}</td>
-                    <td className="px-5 py-3.5 text-slate-600 font-mono text-xs">{emp.phone}</td>
-                    <td className="px-5 py-3.5 text-slate-600 font-mono text-xs">{emp.bank_account_number || '-'}</td>
-                    <td className="px-5 py-3.5 text-slate-700 font-semibold">{Number(emp.basic_salary).toLocaleString()} EGP</td>
-                    <td className="px-5 py-3.5 text-slate-500">{new Date(emp.hire_date).toLocaleDateString(lang === 'ar' ? 'ar-EG' : 'en-GB')}</td>
-                    <td className="px-5 py-3.5">
+                    {visibleCols.department   && <td className="px-5 py-3.5 text-slate-600">{emp.departments ? (lang === 'ar' ? emp.departments.name_ar : emp.departments.name_en) : '-'}</td>}
+                    {visibleCols.phone        && <td className="px-5 py-3.5 text-slate-600 font-mono text-xs">{emp.phone}</td>}
+                    {visibleCols.bank_account && <td className="px-5 py-3.5 text-slate-600 font-mono text-xs">{emp.bank_account_number || '-'}</td>}
+                    {visibleCols.basic_salary && <td className="px-5 py-3.5 text-slate-700 font-semibold">{Number(emp.basic_salary).toLocaleString()} EGP</td>}
+                    {visibleCols.hire_date    && <td className="px-5 py-3.5 text-slate-500">{new Date(emp.hire_date).toLocaleDateString(lang === 'ar' ? 'ar-EG' : 'en-GB')}</td>}
+                    {visibleCols.status       && <td className="px-5 py-3.5">
                       <span className={`text-xs font-semibold px-2.5 py-1 rounded-full ${statusBadge(emp.status)}`}>
                         {t(emp.status.toLowerCase() as Parameters<typeof t>[0])}
                       </span>
-                    </td>
+                    </td>}
                     <td className="px-5 py-3.5">
                       <div className="flex items-center justify-end gap-1.5">
                         <button onClick={() => openEdit(emp)} className="p-1.5 rounded-lg hover:bg-red-50 text-slate-400 hover:text-red-700 transition-colors">
