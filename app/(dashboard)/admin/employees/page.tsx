@@ -120,7 +120,7 @@ export default function EmployeesPage() {
           <h1 className="text-2xl font-bold text-slate-900">{t('employees')}</h1>
           <p className="text-slate-500 text-sm mt-0.5">{count} {t('total')}</p>
         </div>
-        <button onClick={openAdd} className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold px-4 py-2.5 rounded-xl transition-colors shadow-sm shadow-blue-600/30">
+        <button onClick={openAdd} className="flex items-center gap-2 text-white text-sm font-semibold px-4 py-2.5 rounded-xl transition-colors shadow-sm" style={{ background: 'linear-gradient(135deg,#991B1B,#B91C1C)', boxShadow: '0 2px 8px rgba(153,27,27,0.35)' }}>
           <Plus size={16} />
           {t('addEmployee')}
         </button>
@@ -134,13 +134,13 @@ export default function EmployeesPage() {
             value={search}
             onChange={e => { setSearch(e.target.value); setPage(1); }}
             placeholder={t('search')}
-            className="w-full ps-9 pe-3 py-2 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-400"
+            className="w-full ps-9 pe-3 py-2 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-red-800/20 focus:border-red-800"
           />
         </div>
         <select
           value={deptFilter}
           onChange={e => { setDeptFilter(e.target.value); setPage(1); }}
-          className="text-sm border border-slate-200 rounded-xl px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-400 text-slate-700"
+          className="text-sm border border-slate-200 rounded-xl px-3 py-2 focus:outline-none focus:ring-2 focus:ring-red-800/20 focus:border-red-800 text-slate-700"
         >
           <option value="">{t('allDepartments')}</option>
           {departments.map(d => <option key={d.id} value={d.id}>{lang === 'ar' ? d.name_ar : d.name_en}</option>)}
@@ -148,7 +148,7 @@ export default function EmployeesPage() {
         <select
           value={limit}
           onChange={e => { setLimit(Number(e.target.value)); setPage(1); }}
-          className="text-sm border border-slate-200 rounded-xl px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-400 text-slate-700"
+          className="text-sm border border-slate-200 rounded-xl px-3 py-2 focus:outline-none focus:ring-2 focus:ring-red-800/20 focus:border-red-800 text-slate-700"
         >
           <option value={10}>10</option>
           <option value={25}>25</option>
@@ -167,6 +167,7 @@ export default function EmployeesPage() {
                 <th className="text-start px-5 py-3.5 font-semibold text-slate-600 text-xs">{t('employee')}</th>
                 <th className="text-start px-5 py-3.5 font-semibold text-slate-600 text-xs">{t('department')}</th>
                 <th className="text-start px-5 py-3.5 font-semibold text-slate-600 text-xs">{t('phone')}</th>
+                <th className="text-start px-5 py-3.5 font-semibold text-slate-600 text-xs">{lang === 'ar' ? 'رقم الحساب البنكي' : 'Bank Account'}</th>
                 <th className="text-start px-5 py-3.5 font-semibold text-slate-600 text-xs">{t('basicSalary')}</th>
                 <th className="text-start px-5 py-3.5 font-semibold text-slate-600 text-xs">{t('hireDate')}</th>
                 <th className="text-start px-5 py-3.5 font-semibold text-slate-600 text-xs">{t('status')}</th>
@@ -175,15 +176,15 @@ export default function EmployeesPage() {
             </thead>
             <tbody className="divide-y divide-slate-50">
               {loading ? (
-                <tr><td colSpan={7} className="py-12 text-center"><div className="w-6 h-6 border-2 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto" /></td></tr>
+                <tr><td colSpan={8} className="py-12 text-center"><div className="w-6 h-6 border-2 border-red-800 border-t-transparent rounded-full animate-spin mx-auto" /></td></tr>
               ) : employees.length === 0 ? (
-                <tr><td colSpan={7} className="py-12 text-center text-slate-400">{t('noData')}</td></tr>
+                <tr><td colSpan={8} className="py-12 text-center text-slate-400">{t('noData')}</td></tr>
               ) : (
                 employees.map(emp => (
                   <tr key={emp.id} className="hover:bg-slate-50/50 transition-colors">
                     <td className="px-5 py-3.5">
                       <div className="flex items-center gap-3">
-                        <div className="w-8 h-8 rounded-full bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center shrink-0 shadow-sm">
+                        <div className="w-8 h-8 rounded-full flex items-center justify-center shrink-0 shadow-sm" style={{ background: 'linear-gradient(135deg,#991B1B,#B91C1C)' }}>
                           <span className="text-white text-xs font-bold">{(lang === 'ar' ? emp.name_ar : emp.name_en)?.charAt(0)}</span>
                         </div>
                         <div>
@@ -194,6 +195,7 @@ export default function EmployeesPage() {
                     </td>
                     <td className="px-5 py-3.5 text-slate-600">{emp.departments ? (lang === 'ar' ? emp.departments.name_ar : emp.departments.name_en) : '-'}</td>
                     <td className="px-5 py-3.5 text-slate-600 font-mono text-xs">{emp.phone}</td>
+                    <td className="px-5 py-3.5 text-slate-600 font-mono text-xs">{emp.bank_account_number || '-'}</td>
                     <td className="px-5 py-3.5 text-slate-700 font-semibold">{Number(emp.basic_salary).toLocaleString()} EGP</td>
                     <td className="px-5 py-3.5 text-slate-500">{new Date(emp.hire_date).toLocaleDateString(lang === 'ar' ? 'ar-EG' : 'en-GB')}</td>
                     <td className="px-5 py-3.5">
@@ -203,7 +205,7 @@ export default function EmployeesPage() {
                     </td>
                     <td className="px-5 py-3.5">
                       <div className="flex items-center justify-end gap-1.5">
-                        <button onClick={() => openEdit(emp)} className="p-1.5 rounded-lg hover:bg-blue-50 text-slate-400 hover:text-blue-600 transition-colors">
+                        <button onClick={() => openEdit(emp)} className="p-1.5 rounded-lg hover:bg-red-50 text-slate-400 hover:text-red-700 transition-colors">
                           <Edit2 size={15} />
                         </button>
                         <button onClick={() => handleDelete(emp.id, lang === 'ar' ? emp.name_ar : emp.name_en)} className="p-1.5 rounded-lg hover:bg-red-50 text-slate-400 hover:text-red-500 transition-colors">
@@ -262,14 +264,14 @@ export default function EmployeesPage() {
                       type={f.type}
                       value={form[f.key as keyof typeof form]}
                       onChange={e => setForm(p => ({ ...p, [f.key]: e.target.value }))}
-                      className="w-full px-3 py-2.5 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-400"
+                      className="w-full px-3 py-2.5 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-red-800/20 focus:border-red-800"
                     />
                   </div>
                 ))}
                 <div>
                   <label className="block text-xs font-semibold text-slate-600 mb-1.5">{t('department')}</label>
                   <select value={form.department_id} onChange={e => setForm(p => ({ ...p, department_id: e.target.value }))}
-                    className="w-full px-3 py-2.5 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-400">
+                    className="w-full px-3 py-2.5 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-red-800/20 focus:border-red-800">
                     <option value="">{t('selectDepartment')}</option>
                     {departments.map(d => <option key={d.id} value={d.id}>{lang === 'ar' ? d.name_ar : d.name_en}</option>)}
                   </select>
@@ -277,7 +279,7 @@ export default function EmployeesPage() {
                 <div>
                   <label className="block text-xs font-semibold text-slate-600 mb-1.5">{t('position')}</label>
                   <select value={form.position_id} onChange={e => setForm(p => ({ ...p, position_id: e.target.value }))}
-                    className="w-full px-3 py-2.5 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-400">
+                    className="w-full px-3 py-2.5 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-red-800/20 focus:border-red-800">
                     <option value="">{t('selectPosition')}</option>
                     {positions.map(p => <option key={p.id} value={p.id}>{lang === 'ar' ? p.name_ar : p.name_en}</option>)}
                   </select>
@@ -285,7 +287,7 @@ export default function EmployeesPage() {
                 <div>
                   <label className="block text-xs font-semibold text-slate-600 mb-1.5">{lang === 'ar' ? 'الوردية' : 'Shift'}</label>
                   <select value={form.shift_id} onChange={e => setForm(p => ({ ...p, shift_id: e.target.value }))}
-                    className="w-full px-3 py-2.5 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-400">
+                    className="w-full px-3 py-2.5 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-red-800/20 focus:border-red-800">
                     <option value="">{lang === 'ar' ? 'بدون وردية' : 'No shift'}</option>
                     {shifts.map(s => <option key={s.id} value={s.id}>{lang === 'ar' ? s.name_ar : s.name_en}</option>)}
                   </select>
@@ -293,7 +295,7 @@ export default function EmployeesPage() {
                 <div>
                   <label className="block text-xs font-semibold text-slate-600 mb-1.5">{t('role')}</label>
                   <select value={form.role} onChange={e => setForm(p => ({ ...p, role: e.target.value }))}
-                    className="w-full px-3 py-2.5 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-400">
+                    className="w-full px-3 py-2.5 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-red-800/20 focus:border-red-800">
                     {['EMPLOYEE', 'HR_MANAGER', 'DEPARTMENT_MANAGER', 'FINANCE', 'SUPER_ADMIN'].map(r => (
                       <option key={r} value={r}>{r}</option>
                     ))}
@@ -302,7 +304,7 @@ export default function EmployeesPage() {
                 <div>
                   <label className="block text-xs font-semibold text-slate-600 mb-1.5">{t('status')}</label>
                   <select value={form.status} onChange={e => setForm(p => ({ ...p, status: e.target.value }))}
-                    className="w-full px-3 py-2.5 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-400">
+                    className="w-full px-3 py-2.5 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-red-800/20 focus:border-red-800">
                     {['ACTIVE', 'INACTIVE', 'TERMINATED'].map(s => <option key={s} value={s}>{s}</option>)}
                   </select>
                 </div>
@@ -312,7 +314,7 @@ export default function EmployeesPage() {
               <button onClick={() => setShowModal(false)} className="px-5 py-2.5 text-sm font-semibold text-slate-600 hover:bg-slate-100 rounded-xl transition-colors">
                 {t('cancel')}
               </button>
-              <button onClick={handleSave} disabled={saving} className="px-5 py-2.5 text-sm font-semibold bg-blue-600 hover:bg-blue-700 text-white rounded-xl transition-colors disabled:opacity-60 shadow-sm shadow-blue-600/30">
+              <button onClick={handleSave} disabled={saving} className="px-5 py-2.5 text-sm font-semibold text-white rounded-xl transition-colors disabled:opacity-60" style={{ background: 'linear-gradient(135deg,#991B1B,#B91C1C)', boxShadow: '0 2px 8px rgba(153,27,27,0.35)' }}>
                 {saving ? t('saving') : t('save')}
               </button>
             </div>
