@@ -17,7 +17,7 @@ export async function GET(request: Request) {
   const supabase = createServerSupabase();
   let query = supabase
     .from('leave_requests')
-    .select('*, employees(id,name_ar,name_en,employee_number,manager_id), leave_types(name_ar,name_en)', { count: 'exact' });
+    .select('*, employees!employee_id(id,name_ar,name_en,employee_number,manager_id), leave_types(name_ar,name_en)', { count: 'exact' });
 
   if (status) query = query.eq('status', status);
 

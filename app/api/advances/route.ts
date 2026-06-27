@@ -17,7 +17,7 @@ export async function GET(request: Request) {
   const supabase = createServerSupabase();
   let query = supabase
     .from('advances')
-    .select('*, employees(id,name_ar,name_en,employee_number)', { count: 'exact' });
+    .select('*, employees!employee_id(id,name_ar,name_en,employee_number)', { count: 'exact' });
 
   if (status) query = query.eq('status', status);
   if (payload.role === 'EMPLOYEE' && payload.employee_id) {
