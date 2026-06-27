@@ -86,7 +86,18 @@ export async function POST(request: Request) {
         ? Math.round(((last.dt.getTime() - first.dt.getTime()) / 3600000) * 100) / 100
         : null;
       const status = isLate(first.timeStr, emp.startTime, emp.grace) ? 'LATE' : 'PRESENT';
-      const nightAllowance = (emp.isOvernight || (workHours !== null && workHours > 12)) ? 50 : 0;
+
+      let nightAllowance = 0;
+      if (emp.isOvernight) {
+        // Night allowance if checkout is after 2 AM Egypt time (UTC 00:00)
+        if (entries.length > 1) {
+          const checkoutEgyptHour = (last.dt.getUTCHours() + 2) % 24;
+          if (checkoutEgyptHour >= 2 && checkoutEgyptHour < 8) nightAllowance = 50;
+        }
+      } else {
+        // Regular shift: over 12 hours worked
+        if (workHours !== null && workHours > 12) nightAllowance = 50;
+      }
 
       records.push({
         employee_id: emp.id,

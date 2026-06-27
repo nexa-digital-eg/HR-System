@@ -49,7 +49,7 @@ export async function GET(request: Request) {
   }>();
 
   for (const rec of records || []) {
-    const emp = rec.employees as { id: string; name_ar: string; name_en: string; employee_number: string } | null;
+    const emp = rec.employees as unknown as { id: string; name_ar: string; name_en: string; employee_number: string } | null;
     if (!emp) continue;
     if (!empMap.has(rec.employee_id)) {
       empMap.set(rec.employee_id, {
