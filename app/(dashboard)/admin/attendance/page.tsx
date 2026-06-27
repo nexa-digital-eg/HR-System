@@ -32,6 +32,7 @@ const STATUS_COLORS: Record<string, string> = {
   ABSENT: 'bg-red-100 text-red-700',
   HALF_DAY: 'bg-orange-100 text-orange-700',
   LEAVE: 'bg-blue-100 text-blue-700',
+  INCOMPLETE: 'bg-purple-100 text-purple-700',
 };
 
 const today = new Date().toISOString().split('T')[0];
@@ -53,6 +54,8 @@ export default function AdminAttendancePage() {
   const [showImport, setShowImport] = useState(false);
   const [importing, setImporting] = useState(false);
   const [importResult, setImportResult] = useState<{ created: number; unmatched: number; unmatchedNums: string[]; totalLines: number } | null>(null);
+  const [markingAbsent, setMarkingAbsent] = useState(false);
+  const [statusFilter, setStatusFilter] = useState('');
   const fileRef = useRef<HTMLInputElement>(null);
 
   const fetchRecords = useCallback(() => {
@@ -145,6 +148,31 @@ export default function AdminAttendancePage() {
     }
   };
 
+  const handleMarkAbsent = async () => {
+    if (dateFrom !== dateTo) {
+      return alert(lang === 'ar' ? 'اختر يوم واحد فقط لتسوية الغياب' : 'Select a single date to mark absences');
+    }
+    setMarkingAbsent(true);
+    try {
+      const res = await fetch('/api/attendance/mark-absent', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ date: dateFrom }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error);
+      const msg = lang === 'ar'
+        ? `تمت التسوية: ${data.absent} غائب، ${data.onLeave} إجازة`
+        : `Done: ${data.absent} absent, ${data.onLeave} on leave`;
+      alert(msg);
+      fetchRecords();
+    } catch (e: unknown) {
+      alert(e instanceof Error ? e.message : String(e));
+    } finally {
+      setMarkingAbsent(false);
+    }
+  };
+
   const handleExport = () => {
     if (records.length === 0) return toast.error(lang === 'ar' ? 'لا توجد بيانات للتصدير' : 'No data to export');
 
@@ -187,6 +215,7 @@ export default function AdminAttendancePage() {
         !rec.employees.name_ar.toLowerCase().includes(search.toLowerCase()) &&
         !rec.employees.name_en.toLowerCase().includes(search.toLowerCase())) return false;
     if (deptFilter && empNumToDeptId[rec.employees.employee_number] !== deptFilter) return false;
+    if (statusFilter && rec.status !== statusFilter) return false;
     return true;
   });
 
@@ -207,6 +236,10 @@ export default function AdminAttendancePage() {
           <button onClick={() => { setShowImport(true); setImportResult(null); }} className="flex items-center gap-2 bg-teal-600 hover:bg-teal-700 text-white text-sm font-semibold px-4 py-2.5 rounded-xl transition-colors shadow-sm shadow-teal-600/30">
             <Upload size={15} />
             {lang === 'ar' ? 'استيراد بصمة' : 'Import .dat'}
+          </button>
+          <button onClick={handleMarkAbsent} disabled={markingAbsent} className="flex items-center gap-2 bg-red-700 hover:bg-red-800 text-white text-sm font-semibold px-4 py-2.5 rounded-xl transition-colors shadow-sm shadow-red-700/30 disabled:opacity-60">
+            {markingAbsent ? <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" /> : null}
+            {lang === 'ar' ? 'تسوية الغياب' : 'Mark Absences'}
           </button>
           <button onClick={openAdd} className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold px-4 py-2.5 rounded-xl transition-colors shadow-sm shadow-blue-600/30">
             <Plus size={16} />
@@ -250,18 +283,28 @@ export default function AdminAttendancePage() {
           {departments.map(d => <option key={d.id} value={d.id}>{lang === 'ar' ? d.name_ar : d.name_en}</option>)}
         </select>
 
-        {!isRange && (
-          <div className="flex items-center gap-2 ms-auto">
-            {['PRESENT', 'LATE', 'ABSENT'].map(s => {
-              const cnt = filteredRecords.filter(r => r.status === s).length;
-              return cnt > 0 ? (
-                <span key={s} className={`text-xs font-bold px-2.5 py-1 rounded-full ${STATUS_COLORS[s]}`}>
-                  {cnt} {t(s.toLowerCase() as Parameters<typeof t>[0])}
-                </span>
-              ) : null;
-            })}
-          </div>
-        )}
+        {/* Status filter chips */}
+        <div className="flex items-center gap-1.5 flex-wrap ms-auto">
+          <button
+            onClick={() => setStatusFilter('')}
+            className={`text-xs font-semibold px-2.5 py-1 rounded-full border transition-colors ${statusFilter === '' ? 'bg-slate-700 text-white border-slate-700' : 'bg-slate-100 text-slate-600 border-slate-200 hover:border-slate-400'}`}
+          >
+            {t('allStatuses')}
+          </button>
+          {['PRESENT', 'LATE', 'INCOMPLETE', 'ABSENT', 'LEAVE', 'HALF_DAY'].map(s => {
+            const cnt = records.filter(r => r.status === s).length;
+            if (cnt === 0 && statusFilter !== s) return null;
+            return (
+              <button
+                key={s}
+                onClick={() => setStatusFilter(statusFilter === s ? '' : s)}
+                className={`text-xs font-semibold px-2.5 py-1 rounded-full border transition-colors ${statusFilter === s ? STATUS_COLORS[s] + ' ring-2 ring-offset-1 ring-current' : STATUS_COLORS[s] + ' opacity-70 hover:opacity-100'}`}
+              >
+                {cnt} {t(s.toLowerCase() as Parameters<typeof t>[0])}
+              </button>
+            );
+          })}
+        </div>
       </div>
 
       <div className="bg-white rounded-2xl border border-slate-200/80 shadow-sm overflow-hidden">
