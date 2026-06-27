@@ -30,12 +30,31 @@ export async function PUT(request: Request, { params }: { params: Promise<{ id: 
 
   const { id } = await params;
   const body = await request.json();
+
+  const { phone, password, role } = body;
   delete body.user_id;
   delete body.id;
   delete body.password;
   delete body.role;
 
-  const { data, error } = await createServerSupabase()
+  const supabase = createServerSupabase();
+
+  const { data: emp } = await supabase.from('employees').select('user_id').eq('id', id).single();
+
+  if (emp?.user_id) {
+    const userUpdate: Record<string, string> = {};
+    if (phone) userUpdate.phone = phone;
+    if (role) userUpdate.role = role;
+    if (password) {
+      const { hashPassword } = await import('@/lib/auth');
+      userUpdate.password_hash = await hashPassword(password);
+    }
+    if (Object.keys(userUpdate).length > 0) {
+      await supabase.from('users').update(userUpdate).eq('id', emp.user_id);
+    }
+  }
+
+  const { data, error } = await supabase
     .from('employees')
     .update({ ...body, updated_at: new Date().toISOString() })
     .eq('id', id)

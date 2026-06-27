@@ -298,7 +298,7 @@ export default function EmployeesPage() {
                 {[
                   { key: 'name_ar', label: t('nameAr'), type: 'text', required: true },
                   { key: 'name_en', label: t('nameEn'), type: 'text' },
-                  { key: 'phone', label: t('phone'), type: 'tel', required: true },
+                  { key: 'phone', label: lang === 'ar' ? 'رقم الهاتف (رقم تسجيل الدخول)' : 'Phone (login number)', type: 'tel', required: true },
                   { key: 'email', label: t('email'), type: 'email' },
                   { key: 'employee_number', label: t('employeeNumber'), type: 'text', required: true },
                   { key: 'hire_date', label: t('hireDate'), type: 'date', required: true },
@@ -362,12 +362,14 @@ export default function EmployeesPage() {
                   </select>
                 </div>
                 <div>
-                  <label className="block text-xs font-semibold text-slate-600 mb-1.5">{t('role')}</label>
+                  <label className="block text-xs font-semibold text-slate-600 mb-1.5">
+                    {lang === 'ar' ? 'صلاحيات النظام' : 'System Access'}
+                  </label>
                   <select value={form.role} onChange={e => setForm(p => ({ ...p, role: e.target.value }))}
                     className="w-full px-3 py-2.5 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-red-800/20 focus:border-red-800">
-                    {['EMPLOYEE', 'HR_MANAGER', 'DEPARTMENT_MANAGER', 'FINANCE', 'SUPER_ADMIN'].map(r => (
-                      <option key={r} value={r}>{r}</option>
-                    ))}
+                    <option value="EMPLOYEE">{lang === 'ar' ? 'موظف (بوابة الموظف فقط)' : 'Employee (portal only)'}</option>
+                    <option value="HR_MANAGER">{lang === 'ar' ? 'موارد بشرية / حسابات (وصول كامل)' : 'HR / Accounting (full access)'}</option>
+                    <option value="SUPER_ADMIN">{lang === 'ar' ? 'مدير النظام (كل الصلاحيات)' : 'Super Admin (all permissions)'}</option>
                   </select>
                 </div>
                 <div>
