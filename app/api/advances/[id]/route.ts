@@ -19,7 +19,7 @@ export async function PUT(request: Request, { params }: { params: Promise<{ id: 
 
   const { data: advance } = await supabase
     .from('advances')
-    .select('*, employees(user_id, name_ar, name_en)')
+    .select('*, employees!employee_id(user_id, name_ar, name_en)')
     .eq('id', id)
     .single();
 
