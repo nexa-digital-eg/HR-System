@@ -2,13 +2,14 @@
 
 import { useEffect, useState, useCallback } from 'react';
 import { useLanguage } from '@/lib/i18n';
-import { CheckCircle, XCircle, Eye, X, Filter } from 'lucide-react';
+import { CheckCircle, XCircle, Eye, X } from 'lucide-react';
 import { toast } from 'sonner';
+import { JWTPayload } from '@/lib/types';
 
 interface LeaveRequest {
   id: string;
   employee_id: string;
-  employees: { name_ar: string; name_en: string; employee_number: string };
+  employees: { name_ar: string; name_en: string; employee_number: string; manager_id?: string };
   leave_types: { name_ar: string; name_en: string };
   start_date: string;
   end_date: string;
@@ -28,6 +29,11 @@ export default function AdminLeavesPage() {
   const [selected, setSelected] = useState<LeaveRequest | null>(null);
   const [rejReason, setRejReason] = useState('');
   const [acting, setActing] = useState(false);
+  const [me, setMe] = useState<JWTPayload | null>(null);
+
+  useEffect(() => {
+    fetch('/api/me').then(r => r.json()).then(d => setMe(d)).catch(() => {});
+  }, []);
 
   const fetchLeaves = useCallback(() => {
     setLoading(true);
@@ -39,6 +45,20 @@ export default function AdminLeavesPage() {
   }, [statusFilter]);
 
   useEffect(() => { fetchLeaves(); }, [fetchLeaves]);
+
+  const canActOn = (leave: LeaveRequest): 'first' | 'second' | null => {
+    if (!me) return null;
+    const isDirectManager = !!me.employee_id && me.employee_id === leave.employees.manager_id;
+    const isHRAdmin = ['HR_MANAGER', 'SUPER_ADMIN', 'FINANCE'].includes(me.role);
+
+    if (leave.status === 'PENDING') {
+      if (isDirectManager) return 'first';
+      if (isHRAdmin && !leave.employees.manager_id) return 'second';
+      return null;
+    }
+    if (leave.status === 'MANAGER_APPROVED' && isHRAdmin) return 'second';
+    return null;
+  };
 
   const handleAction = async (id: string, action: 'approve' | 'reject') => {
     if (action === 'reject' && !rejReason.trim()) {
@@ -68,11 +88,19 @@ export default function AdminLeavesPage() {
   const statusBadge = (status: string) => {
     const map: Record<string, string> = {
       PENDING: 'bg-amber-100 text-amber-700 border border-amber-200',
+      MANAGER_APPROVED: 'bg-blue-100 text-blue-700 border border-blue-200',
       APPROVED: 'bg-green-100 text-green-700 border border-green-200',
       REJECTED: 'bg-red-100 text-red-700 border border-red-200',
     };
     return map[status] || 'bg-slate-100 text-slate-600';
   };
+
+  const statusLabel = (status: string) => {
+    const key = status.toLowerCase().replace('_', '_') as Parameters<typeof t>[0];
+    return t(key);
+  };
+
+  const filterTabs = ['', 'PENDING', 'MANAGER_APPROVED', 'APPROVED', 'REJECTED'];
 
   return (
     <div className="space-y-5">
@@ -82,14 +110,14 @@ export default function AdminLeavesPage() {
       </div>
 
       {/* Status filter tabs */}
-      <div className="flex gap-1 bg-slate-100 p-1 rounded-xl w-fit">
-        {['', 'PENDING', 'APPROVED', 'REJECTED'].map(s => (
+      <div className="flex flex-wrap gap-1 bg-slate-100 p-1 rounded-xl w-fit">
+        {filterTabs.map(s => (
           <button
             key={s}
             onClick={() => setStatusFilter(s)}
             className={`px-4 py-1.5 rounded-lg text-sm font-medium transition-all ${statusFilter === s ? 'bg-white text-slate-800 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
           >
-            {s === '' ? t('all') : t(s.toLowerCase() as Parameters<typeof t>[0])}
+            {s === '' ? t('all') : statusLabel(s)}
           </button>
         ))}
       </div>
@@ -114,51 +142,62 @@ export default function AdminLeavesPage() {
               ) : leaves.length === 0 ? (
                 <tr><td colSpan={6} className="py-12 text-center text-slate-400">{t('noData')}</td></tr>
               ) : (
-                leaves.map(leave => (
-                  <tr key={leave.id} className="hover:bg-slate-50/50 transition-colors">
-                    <td className="px-5 py-3.5">
-                      <div className="flex items-center gap-3">
-                        <div className="w-8 h-8 rounded-full bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center shrink-0 shadow-sm">
-                          <span className="text-white text-xs font-bold">
-                            {(lang === 'ar' ? leave.employees.name_ar : leave.employees.name_en)?.charAt(0)}
+                leaves.map(leave => {
+                  const actionLevel = canActOn(leave);
+                  return (
+                    <tr key={leave.id} className="hover:bg-slate-50/50 transition-colors">
+                      <td className="px-5 py-3.5">
+                        <div className="flex items-center gap-3">
+                          <div className="w-8 h-8 rounded-full bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center shrink-0 shadow-sm">
+                            <span className="text-white text-xs font-bold">
+                              {(lang === 'ar' ? leave.employees.name_ar : leave.employees.name_en)?.charAt(0)}
+                            </span>
+                          </div>
+                          <div>
+                            <p className="font-medium text-slate-800">{lang === 'ar' ? leave.employees.name_ar : leave.employees.name_en}</p>
+                            <p className="text-xs text-slate-400">{leave.employees.employee_number}</p>
+                          </div>
+                        </div>
+                      </td>
+                      <td className="px-5 py-3.5 text-slate-600">{lang === 'ar' ? leave.leave_types.name_ar : leave.leave_types.name_en}</td>
+                      <td className="px-5 py-3.5 text-slate-500 text-xs">
+                        {new Date(leave.start_date).toLocaleDateString(lang === 'ar' ? 'ar-EG' : 'en-GB')} →{' '}
+                        {new Date(leave.end_date).toLocaleDateString(lang === 'ar' ? 'ar-EG' : 'en-GB')}
+                      </td>
+                      <td className="px-5 py-3.5 font-semibold text-slate-700">{leave.days}</td>
+                      <td className="px-5 py-3.5">
+                        <div className="space-y-1">
+                          <span className={`text-xs font-semibold px-2.5 py-1 rounded-full ${statusBadge(leave.status)}`}>
+                            {statusLabel(leave.status)}
                           </span>
+                          {leave.status === 'PENDING' && leave.employees.manager_id && (
+                            <p className="text-[10px] text-slate-400">{lang === 'ar' ? 'ينتظر المدير المباشر' : 'Awaiting direct manager'}</p>
+                          )}
+                          {leave.status === 'MANAGER_APPROVED' && (
+                            <p className="text-[10px] text-blue-500">{lang === 'ar' ? 'ينتظر موافقة الإدارة' : 'Awaiting HR approval'}</p>
+                          )}
                         </div>
-                        <div>
-                          <p className="font-medium text-slate-800">{lang === 'ar' ? leave.employees.name_ar : leave.employees.name_en}</p>
-                          <p className="text-xs text-slate-400">{leave.employees.employee_number}</p>
+                      </td>
+                      <td className="px-5 py-3.5">
+                        <div className="flex items-center justify-end gap-1">
+                          <button onClick={() => { setSelected(leave); setRejReason(''); }} className="p-1.5 rounded-lg hover:bg-slate-100 text-slate-400 hover:text-slate-600 transition-colors" title={t('view')}>
+                            <Eye size={15} />
+                          </button>
+                          {actionLevel && (
+                            <>
+                              <button onClick={() => handleAction(leave.id, 'approve')} className="p-1.5 rounded-lg hover:bg-green-50 text-slate-400 hover:text-green-600 transition-colors" title={t('approve')}>
+                                <CheckCircle size={15} />
+                              </button>
+                              <button onClick={() => { setSelected(leave); setRejReason(''); }} className="p-1.5 rounded-lg hover:bg-red-50 text-slate-400 hover:text-red-500 transition-colors" title={t('reject')}>
+                                <XCircle size={15} />
+                              </button>
+                            </>
+                          )}
                         </div>
-                      </div>
-                    </td>
-                    <td className="px-5 py-3.5 text-slate-600">{lang === 'ar' ? leave.leave_types.name_ar : leave.leave_types.name_en}</td>
-                    <td className="px-5 py-3.5 text-slate-500 text-xs">
-                      {new Date(leave.start_date).toLocaleDateString(lang === 'ar' ? 'ar-EG' : 'en-GB')} →{' '}
-                      {new Date(leave.end_date).toLocaleDateString(lang === 'ar' ? 'ar-EG' : 'en-GB')}
-                    </td>
-                    <td className="px-5 py-3.5 font-semibold text-slate-700">{leave.days}</td>
-                    <td className="px-5 py-3.5">
-                      <span className={`text-xs font-semibold px-2.5 py-1 rounded-full ${statusBadge(leave.status)}`}>
-                        {t(leave.status.toLowerCase() as Parameters<typeof t>[0])}
-                      </span>
-                    </td>
-                    <td className="px-5 py-3.5">
-                      <div className="flex items-center justify-end gap-1">
-                        <button onClick={() => { setSelected(leave); setRejReason(''); }} className="p-1.5 rounded-lg hover:bg-slate-100 text-slate-400 hover:text-slate-600 transition-colors" title={t('view')}>
-                          <Eye size={15} />
-                        </button>
-                        {leave.status === 'PENDING' && (
-                          <>
-                            <button onClick={() => handleAction(leave.id, 'approve')} className="p-1.5 rounded-lg hover:bg-green-50 text-slate-400 hover:text-green-600 transition-colors" title={t('approve')}>
-                              <CheckCircle size={15} />
-                            </button>
-                            <button onClick={() => { setSelected(leave); setRejReason(''); }} className="p-1.5 rounded-lg hover:bg-red-50 text-slate-400 hover:text-red-500 transition-colors" title={t('reject')}>
-                              <XCircle size={15} />
-                            </button>
-                          </>
-                        )}
-                      </div>
-                    </td>
-                  </tr>
-                ))
+                      </td>
+                    </tr>
+                  );
+                })
               )}
             </tbody>
           </table>
@@ -192,12 +231,24 @@ export default function AdminLeavesPage() {
                   <p className="font-semibold text-slate-800">{new Date(selected.end_date).toLocaleDateString(lang === 'ar' ? 'ar-EG' : 'en-GB')}</p>
                 </div>
                 <div className="bg-slate-50 rounded-xl p-3 col-span-2">
+                  <p className="text-xs text-slate-400 mb-0.5">{t('status')}</p>
+                  <span className={`text-xs font-semibold px-2.5 py-1 rounded-full ${statusBadge(selected.status)}`}>
+                    {statusLabel(selected.status)}
+                  </span>
+                  {selected.status === 'PENDING' && selected.employees.manager_id && (
+                    <p className="text-xs text-slate-400 mt-1">{lang === 'ar' ? 'ينتظر موافقة المدير المباشر' : 'Awaiting direct manager approval'}</p>
+                  )}
+                  {selected.status === 'MANAGER_APPROVED' && (
+                    <p className="text-xs text-blue-500 mt-1">{lang === 'ar' ? 'وافق المدير المباشر — ينتظر موافقة الإدارة' : 'Manager approved — awaiting HR final approval'}</p>
+                  )}
+                </div>
+                <div className="bg-slate-50 rounded-xl p-3 col-span-2">
                   <p className="text-xs text-slate-400 mb-0.5">{t('reason')}</p>
                   <p className="font-medium text-slate-700">{selected.reason || '-'}</p>
                 </div>
               </div>
 
-              {selected.status === 'PENDING' && (
+              {canActOn(selected) && (
                 <div>
                   <label className="block text-xs font-semibold text-slate-600 mb-1.5">{t('rejectionReason')}</label>
                   <textarea
@@ -210,7 +261,7 @@ export default function AdminLeavesPage() {
                 </div>
               )}
             </div>
-            {selected.status === 'PENDING' && (
+            {canActOn(selected) && (
               <div className="flex items-center gap-3 p-6 pt-0">
                 <button
                   onClick={() => handleAction(selected.id, 'reject')}
