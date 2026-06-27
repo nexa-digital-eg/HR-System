@@ -165,6 +165,8 @@ export interface JWTPayload {
   name_ar?: string;
   name_en?: string;
   phone: string;
+  position_name_ar?: string;
+  position_name_en?: string;
   iat?: number;
   exp?: number;
 }
