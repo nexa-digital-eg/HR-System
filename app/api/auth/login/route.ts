@@ -29,9 +29,11 @@ export async function POST(request: Request) {
 
     const { data: employee } = await supabase
       .from('employees')
-      .select('id, name_ar, name_en')
+      .select('id, name_ar, name_en, positions(name_ar, name_en)')
       .eq('user_id', user.id)
       .single();
+
+    const pos = employee?.positions as { name_ar: string; name_en: string } | null;
 
     const token = await createToken({
       sub: user.id,
@@ -40,6 +42,8 @@ export async function POST(request: Request) {
       name_ar: employee?.name_ar,
       name_en: employee?.name_en,
       phone: user.phone,
+      position_name_ar: pos?.name_ar,
+      position_name_en: pos?.name_en,
     });
 
     const res = NextResponse.json({ role: user.role, message: 'Login successful' });

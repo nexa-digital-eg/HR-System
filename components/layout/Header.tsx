@@ -82,7 +82,7 @@ export default function Header({ user, title }: HeaderProps) {
             <p className="text-[13px] font-semibold text-slate-800 leading-tight">{displayName}</p>
             <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full"
               style={{ background: roleStyle.bg, color: roleStyle.text }}>
-              {t(roleKeyMap[user.role])}
+              {(lang === 'ar' ? user.position_name_ar : user.position_name_en) || t(roleKeyMap[user.role])}
             </span>
           </div>
         </div>
