@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState, useCallback, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { useLanguage } from '@/lib/i18n';
 import { Search, Plus, Edit2, Trash2, X, ChevronLeft, ChevronRight, Eye, EyeOff, SlidersHorizontal, Check } from 'lucide-react';
 import { toast } from 'sonner';
@@ -57,6 +58,9 @@ export default function EmployeesPage() {
     department: true, phone: true, bank_account: true,
     basic_salary: true, hire_date: true, status: true,
   });
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
+
   const colsRef = useRef<HTMLDivElement>(null);
   const modalRef = useRef<HTMLDivElement>(null);
 
@@ -302,8 +306,8 @@ export default function EmployeesPage() {
         )}
       </div>
 
-      {/* Modal */}
-      {showModal && (
+      {/* Modal – rendered via portal to document.body so position:fixed is never trapped by an ancestor transform */}
+      {mounted && showModal && createPortal(
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
           <div ref={modalRef} className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between p-6 border-b border-slate-100 sticky top-0 bg-white rounded-t-2xl z-10">
@@ -417,7 +421,8 @@ export default function EmployeesPage() {
               </button>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   );
