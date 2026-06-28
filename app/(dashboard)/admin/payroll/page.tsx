@@ -3,7 +3,7 @@
 import { useEffect, useState, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import { useLanguage } from '@/lib/i18n';
-import { Play, CheckCircle, Eye, X, Edit2 } from 'lucide-react';
+import { Play, CheckCircle, Eye, X, Edit2, Search } from 'lucide-react';
 import { toast } from 'sonner';
 
 interface Payslip {
@@ -47,6 +47,8 @@ export default function AdminPayrollPage() {
   const [editing, setEditing] = useState<Payslip | null>(null);
   const [editForm, setEditForm] = useState<Record<string, string>>({});
   const [saving, setSaving] = useState(false);
+  const [deductionFilter, setDeductionFilter] = useState('');
+  const [search, setSearch] = useState('');
   const [mounted, setMounted] = useState(false);
   useEffect(() => setMounted(true), []);
 
@@ -134,7 +136,24 @@ export default function AdminPayrollPage() {
 
   const monthName = (m: number) => new Date(2024, m - 1, 1).toLocaleDateString(lang === 'ar' ? 'ar-EG' : 'en-US', { month: 'long' });
 
-  const totalNet = payslips.reduce((s, p) => s + p.net_salary, 0);
+  const filteredPayslips = payslips.filter(p => {
+    const q = search.trim().toLowerCase();
+    if (q) {
+      const name = (p.employees.name_ar + ' ' + p.employees.name_en + ' ' + p.employees.employee_number).toLowerCase();
+      if (!name.includes(q)) return false;
+    }
+    if (!deductionFilter) return true;
+    if (deductionFilter === 'has_deductions') return (p.absence_deduction || 0) + (p.late_deduction || 0) + (p.advance_deduction || 0) + (p.leave_deduction || 0) + (p.other_deductions || 0) > 0;
+    if (deductionFilter === 'absence') return (p.absence_deduction || 0) > 0;
+    if (deductionFilter === 'advance') return (p.advance_deduction || 0) > 0;
+    if (deductionFilter === 'overtime') return (p.overtime_amount || 0) > 0;
+    if (deductionFilter === 'allowances') return (p.other_allowances || 0) > 0;
+    if (deductionFilter === 'paid') return p.status === 'PAID';
+    if (deductionFilter === 'pending') return p.status === 'PENDING';
+    return true;
+  });
+
+  const totalNet = filteredPayslips.reduce((s, p) => s + p.net_salary, 0);
 
   const F = ({ label, k, color }: { label: string; k: string; color?: string }) => (
     <div>
@@ -306,6 +325,21 @@ export default function AdminPayrollPage() {
         >
           {[2023, 2024, 2025, 2026].map(y => <option key={y} value={y}>{y}</option>)}
         </select>
+        <div className="relative flex-1 min-w-[180px]">
+          <Search size={14} className="absolute start-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+          <input
+            type="text"
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+            placeholder={lang === 'ar' ? 'ابحث باسم الموظف أو الرقم...' : 'Search by name or number...'}
+            className="w-full text-sm border border-slate-200 rounded-xl ps-8 pe-3 py-2 focus:outline-none focus:ring-2 focus:ring-red-800/20 focus:border-red-800 text-slate-700 placeholder:text-slate-300"
+          />
+          {search && (
+            <button onClick={() => setSearch('')} className="absolute end-2 top-1/2 -translate-y-1/2 p-1 rounded-md hover:bg-slate-100 text-slate-400">
+              <X size={12} />
+            </button>
+          )}
+        </div>
         {count > 0 && (
           <div className="ms-auto bg-slate-50 border border-slate-100 rounded-xl px-4 py-2 text-sm">
             <span className="text-slate-500">{t('totalNet')}:</span>{' '}
@@ -313,6 +347,37 @@ export default function AdminPayrollPage() {
           </div>
         )}
       </div>
+
+      {/* Filter chips */}
+      {payslips.length > 0 && (
+        <div className="flex flex-wrap gap-2">
+          {[
+            { key: '', label: lang === 'ar' ? 'الكل' : 'All', count: payslips.length },
+            { key: 'has_deductions', label: lang === 'ar' ? 'عندهم خصومات' : 'Has Deductions', count: payslips.filter(p => (p.absence_deduction||0)+(p.late_deduction||0)+(p.advance_deduction||0)+(p.leave_deduction||0)+(p.other_deductions||0)>0).length },
+            { key: 'absence', label: lang === 'ar' ? 'غياب' : 'Absence', count: payslips.filter(p=>(p.absence_deduction||0)>0).length },
+            { key: 'advance', label: lang === 'ar' ? 'سلفة' : 'Advance', count: payslips.filter(p=>(p.advance_deduction||0)>0).length },
+            { key: 'overtime', label: lang === 'ar' ? 'أوفرتايم' : 'Overtime', count: payslips.filter(p=>(p.overtime_amount||0)>0).length },
+            { key: 'allowances', label: lang === 'ar' ? 'بدلات إضافية' : 'Extra Allowances', count: payslips.filter(p=>(p.other_allowances||0)>0).length },
+            { key: 'paid', label: lang === 'ar' ? 'تم الصرف' : 'Paid', count: payslips.filter(p=>p.status==='PAID').length },
+            { key: 'pending', label: lang === 'ar' ? 'في الانتظار' : 'Pending', count: payslips.filter(p=>p.status==='PENDING').length },
+          ].map(chip => (
+            <button
+              key={chip.key}
+              onClick={() => setDeductionFilter(chip.key)}
+              className={`flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-full border transition-all ${
+                deductionFilter === chip.key
+                  ? 'bg-red-800 text-white border-red-800 shadow-sm shadow-red-800/30'
+                  : 'bg-white text-slate-600 border-slate-200 hover:border-red-800/40 hover:text-red-800'
+              }`}
+            >
+              {chip.label}
+              <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${deductionFilter === chip.key ? 'bg-white/20 text-white' : 'bg-slate-100 text-slate-500'}`}>
+                {chip.count}
+              </span>
+            </button>
+          ))}
+        </div>
+      )}
 
       <div className="bg-white rounded-2xl border border-slate-200/80 shadow-sm overflow-hidden">
         <div className="overflow-x-auto">
@@ -339,8 +404,14 @@ export default function AdminPayrollPage() {
                     <p className="text-slate-300 text-xs mt-1">{t('clickGenerateToCreate')}</p>
                   </td>
                 </tr>
+              ) : filteredPayslips.length === 0 ? (
+                <tr>
+                  <td colSpan={8} className="py-12 text-center">
+                    <p className="text-slate-400">{lang === 'ar' ? 'لا يوجد موظفون في هذه الفئة' : 'No employees in this category'}</p>
+                  </td>
+                </tr>
               ) : (
-                payslips.map(p => (
+                filteredPayslips.map(p => (
                   <tr key={p.id} className="hover:bg-slate-50/50 transition-colors">
                     <td className="px-5 py-3.5">
                       <div className="flex items-center gap-3">
