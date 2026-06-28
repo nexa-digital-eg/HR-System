@@ -224,9 +224,16 @@ export default function AdminPayrollPage() {
               <F label={lang === 'ar' ? 'الراتب الأساسي' : 'Basic Salary'} k="basic_salary" />
               <F label={lang === 'ar' ? 'بدل السكن' : 'Housing'} k="housing_allowance" />
               <F label={lang === 'ar' ? 'بدل المواصلات' : 'Transport'} k="transport_allowance" />
-              <F label={lang === 'ar' ? 'بدلات ومكافآت أخرى' : 'Other Allowances'} k="other_allowances" />
+              <F label={lang === 'ar' ? 'مكافآت / بدلات أخرى' : 'Other Allowances'} k="other_allowances" />
               <F label={lang === 'ar' ? 'أوفرتايم' : 'Overtime'} k="overtime_amount" />
             </div>
+            <button
+              type="button"
+              onClick={() => setEditForm(f => ({ ...f, other_allowances: String((Number(f.other_allowances) || 0) + 500) }))}
+              className="text-xs font-semibold px-3 py-1.5 rounded-lg border border-green-200 text-green-700 bg-green-50 hover:bg-green-100 transition-colors"
+            >
+              + {lang === 'ar' ? 'حافز نظافة (500 ج.م)' : 'Add Cleaning Incentive (EGP 500)'}
+            </button>
           </div>
 
           {/* Deductions */}
