@@ -70,10 +70,11 @@ export function calculateNetSalary(payslip: {
   absence_deduction: number;
   late_deduction: number;
   advance_deduction: number;
+  leave_deduction: number;
   other_deductions: number;
 }): number {
   const gross = payslip.basic_salary + payslip.housing_allowance + payslip.transport_allowance + payslip.other_allowances + payslip.overtime_amount;
-  const deductions = payslip.absence_deduction + payslip.late_deduction + payslip.advance_deduction + payslip.other_deductions;
+  const deductions = payslip.absence_deduction + payslip.late_deduction + payslip.advance_deduction + (payslip.leave_deduction || 0) + payslip.other_deductions;
   return Math.max(0, gross - deductions);
 }
 

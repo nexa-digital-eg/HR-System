@@ -19,6 +19,7 @@ interface Payslip {
   absence_deduction: number;
   late_deduction: number;
   advance_deduction: number;
+  leave_deduction: number;
   other_deductions: number;
   net_salary: number;
   status: string;
@@ -27,9 +28,9 @@ interface Payslip {
 
 const MONTHS = [1,2,3,4,5,6,7,8,9,10,11,12];
 
-function calcNet(f: { basic_salary: string; housing_allowance: string; transport_allowance: string; other_allowances: string; overtime_amount: string; absence_deduction: string; late_deduction: string; advance_deduction: string; other_deductions: string }) {
+function calcNet(f: Record<string, string>) {
   const gross = (Number(f.basic_salary) || 0) + (Number(f.housing_allowance) || 0) + (Number(f.transport_allowance) || 0) + (Number(f.other_allowances) || 0) + (Number(f.overtime_amount) || 0);
-  const deductions = (Number(f.absence_deduction) || 0) + (Number(f.late_deduction) || 0) + (Number(f.advance_deduction) || 0) + (Number(f.other_deductions) || 0);
+  const deductions = (Number(f.absence_deduction) || 0) + (Number(f.late_deduction) || 0) + (Number(f.advance_deduction) || 0) + (Number(f.leave_deduction) || 0) + (Number(f.other_deductions) || 0);
   return Math.max(0, gross - deductions);
 }
 
@@ -101,6 +102,7 @@ export default function AdminPayrollPage() {
       absence_deduction: String(p.absence_deduction || 0),
       late_deduction: String(p.late_deduction || 0),
       advance_deduction: String(p.advance_deduction || 0),
+      leave_deduction: String(p.leave_deduction || 0),
       other_deductions: String(p.other_deductions || 0),
     });
     setEditing(p);
@@ -168,6 +170,7 @@ export default function AdminPayrollPage() {
             { label: lang === 'ar' ? 'خصم الغياب' : 'Absence Deduction', value: selected.absence_deduction || 0, color: 'text-red-500' },
             { label: lang === 'ar' ? 'خصم التأخير' : 'Late Deduction', value: selected.late_deduction || 0, color: 'text-red-500' },
             { label: t('advanceDeduction'), value: selected.advance_deduction || 0, color: 'text-orange-500' },
+            { label: lang === 'ar' ? 'خصم الإجازة' : 'Leave Deduction', value: selected.leave_deduction || 0, color: 'text-red-500' },
             { label: lang === 'ar' ? 'جزاءات وخصومات أخرى' : 'Penalties & Other', value: selected.other_deductions || 0, color: 'text-red-500' },
           ].map(row => row.value !== 0 ? (
             <div key={row.label} className="flex items-center justify-between py-2 border-b border-slate-50">
@@ -233,6 +236,7 @@ export default function AdminPayrollPage() {
               <F label={lang === 'ar' ? 'خصم الغياب' : 'Absence'} k="absence_deduction" />
               <F label={lang === 'ar' ? 'خصم التأخير' : 'Late'} k="late_deduction" />
               <F label={lang === 'ar' ? 'خصم السلفة' : 'Advance'} k="advance_deduction" />
+              <F label={lang === 'ar' ? 'خصم الإجازة (بدون رصيد)' : 'Leave Deduction'} k="leave_deduction" />
               <F label={lang === 'ar' ? 'جزاءات وخصومات أخرى' : 'Penalties & Other'} k="other_deductions" />
             </div>
           </div>

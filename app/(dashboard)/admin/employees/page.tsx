@@ -22,6 +22,8 @@ interface Employee {
   shift_id: string | null;
   manager_id: string | null;
   role: string;
+  leave_balance: number;
+  cleaning_incentive: boolean;
   departments: { id: string; name_ar: string; name_en: string } | null;
   positions: { id: string; name_ar: string; name_en: string } | null;
 }
@@ -32,7 +34,7 @@ const BLANK_FORM = {
   name_ar: '', name_en: '', phone: '', email: '', password: '',
   employee_number: '', hire_date: '', basic_salary: '',
   department_id: '', position_id: '', shift_id: '', manager_id: '', role: 'EMPLOYEE', status: 'ACTIVE',
-  bank_account_number: '',
+  bank_account_number: '', leave_balance: '0', cleaning_incentive: false,
 };
 
 export default function EmployeesPage() {
@@ -110,6 +112,8 @@ export default function EmployeesPage() {
       shift_id: emp.shift_id || '', manager_id: emp.manager_id || '',
       role: emp.role || 'EMPLOYEE', status: emp.status,
       bank_account_number: emp.bank_account_number || '',
+      leave_balance: String(emp.leave_balance ?? 0),
+      cleaning_incentive: emp.cleaning_incentive ?? false,
     });
     setShowModal(true);
   };
@@ -119,7 +123,11 @@ export default function EmployeesPage() {
     try {
       const url = editId ? `/api/employees/${editId}` : '/api/employees';
       const method = editId ? 'PUT' : 'POST';
-      const body: Record<string, unknown> = { ...form, basic_salary: Number(form.basic_salary) };
+      const body: Record<string, unknown> = {
+        ...form,
+        basic_salary: Number(form.basic_salary),
+        leave_balance: Number(form.leave_balance) || 0,
+      };
       if (editId && !form.password) delete body.password;
       // Convert empty UUID strings to null so Postgres doesn't reject them
       for (const key of ['department_id', 'position_id', 'shift_id', 'manager_id'] as const) {
@@ -332,7 +340,7 @@ export default function EmployeesPage() {
                     </label>
                     <input
                       type={f.type}
-                      value={form[f.key as keyof typeof form] ?? ''}
+                      value={String(form[f.key as keyof typeof form] ?? '')}
                       onChange={e => setForm(p => ({ ...p, [f.key]: e.target.value }))}
                       className="w-full px-3 py-2.5 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-red-800/20 focus:border-red-800"
                     />
@@ -409,6 +417,30 @@ export default function EmployeesPage() {
                     className="w-full px-3 py-2.5 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-red-800/20 focus:border-red-800">
                     {['ACTIVE', 'INACTIVE', 'TERMINATED'].map(s => <option key={s} value={s}>{s}</option>)}
                   </select>
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-slate-600 mb-1.5">
+                    {lang === 'ar' ? 'رصيد الإجازات (أيام)' : 'Leave Balance (days)'}
+                  </label>
+                  <input
+                    type="number" min={0}
+                    value={form.leave_balance}
+                    onChange={e => setForm(p => ({ ...p, leave_balance: e.target.value }))}
+                    className="w-full px-3 py-2.5 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-red-800/20 focus:border-red-800"
+                  />
+                </div>
+                <div className="col-span-2">
+                  <label className="flex items-center gap-3 cursor-pointer select-none">
+                    <div
+                      onClick={() => setForm(p => ({ ...p, cleaning_incentive: !p.cleaning_incentive }))}
+                      className={`w-10 h-5 rounded-full transition-colors relative ${form.cleaning_incentive ? 'bg-red-700' : 'bg-slate-200'}`}
+                    >
+                      <span className={`absolute top-0.5 w-4 h-4 bg-white rounded-full shadow transition-transform ${form.cleaning_incentive ? (lang === 'ar' ? 'translate-x-[-22px]' : 'translate-x-[22px]') : (lang === 'ar' ? 'translate-x-[-2px]' : 'translate-x-[2px]')}`} />
+                    </div>
+                    <span className="text-sm font-medium text-slate-700">
+                      {lang === 'ar' ? 'حافز نظافة (500 ج.م)' : 'Cleaning Incentive (EGP 500)'}
+                    </span>
+                  </label>
                 </div>
               </div>
             </div>

@@ -156,21 +156,23 @@ export async function PUT(request: Request, { params }: { params: Promise<{ id: 
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
-  // Update leave balance only on final approval
+  // On final approval: deduct from leave_balance, track salary deduction days
   if (newStatus === 'APPROVED') {
-    const currentYear = new Date().getFullYear();
-    const { data: bal } = await supabase
-      .from('leave_balances')
-      .select('id, used_days')
-      .eq('employee_id', leave.employee_id)
-      .eq('leave_type_id', leave.leave_type_id)
-      .eq('year', currentYear)
+    const { data: empData } = await supabase
+      .from('employees')
+      .select('leave_balance')
+      .eq('id', leave.employee_id)
       .single();
-    if (bal) {
-      await supabase.from('leave_balances')
-        .update({ used_days: bal.used_days + leave.days })
-        .eq('id', bal.id);
-    }
+
+    const currentBalance = Number(empData?.leave_balance) || 0;
+    const requestedDays = leave.days || 0;
+    const salaryDeductionDays = Math.max(0, requestedDays - currentBalance);
+    const newBalance = Math.max(0, currentBalance - requestedDays);
+
+    await Promise.all([
+      supabase.from('employees').update({ leave_balance: newBalance }).eq('id', leave.employee_id),
+      supabase.from('leave_requests').update({ salary_deduction_days: salaryDeductionDays }).eq('id', id),
+    ]);
   }
 
   // Notify employee
