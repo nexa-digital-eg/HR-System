@@ -20,7 +20,8 @@ export async function PUT(request: Request, { params }: { params: Promise<{ id: 
     updateData.paid_at = new Date().toISOString();
   } else {
     const { basic_salary, housing_allowance, transport_allowance, other_allowances,
-      overtime_amount, absence_deduction, late_deduction, advance_deduction, other_deductions, notes } = body;
+      overtime_amount, absence_deduction, late_deduction, advance_deduction,
+      leave_deduction, other_deductions, notes } = body;
 
     const net = calculateNetSalary({
       basic_salary: basic_salary || 0,
@@ -31,13 +32,14 @@ export async function PUT(request: Request, { params }: { params: Promise<{ id: 
       absence_deduction: absence_deduction || 0,
       late_deduction: late_deduction || 0,
       advance_deduction: advance_deduction || 0,
+      leave_deduction: leave_deduction || 0,
       other_deductions: other_deductions || 0,
     });
 
     Object.assign(updateData, {
       basic_salary, housing_allowance, transport_allowance, other_allowances,
       overtime_amount, absence_deduction, late_deduction, advance_deduction,
-      other_deductions, net_salary: net, notes,
+      leave_deduction, other_deductions, net_salary: net, notes,
     });
   }
 
