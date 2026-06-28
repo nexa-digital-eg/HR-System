@@ -48,10 +48,10 @@ export async function POST(request: Request) {
 
   const supabase = createServerSupabase();
 
-  // Fetch active employees with shift info, leave balance, and cleaning incentive
+  // Fetch active employees with shift info and leave balance
   const { data: employees } = await supabase
     .from('employees')
-    .select('id, basic_salary, housing_allowance, transport_allowance, shift_id, leave_balance, cleaning_incentive, shifts(start_time, end_time, is_overnight)')
+    .select('id, basic_salary, housing_allowance, transport_allowance, shift_id, leave_balance, shifts(start_time, end_time, is_overnight)')
     .eq('status', 'ACTIVE');
 
   if (!employees?.length) return NextResponse.json({ error: 'No active employees' }, { status: 400 });
@@ -150,9 +150,6 @@ export async function POST(request: Request) {
       overtimeAmount = Math.round(totalOvertimeHours * (basic / 30 / 9) * 100) / 100;
     }
 
-    // Cleaning incentive: fixed 500 EGP for eligible employees
-    const cleaningIncentive = emp.cleaning_incentive ? 500 : 0;
-
     // Leave deduction: days taken beyond balance × daily rate
     const leaveDeductionDays = leaveDeductionMap.get(emp.id) || 0;
     const leaveDeduction = Math.round(leaveDeductionDays * dailyRate * 100) / 100;
@@ -161,7 +158,7 @@ export async function POST(request: Request) {
       basic_salary: basic,
       housing_allowance: housing,
       transport_allowance: transport,
-      other_allowances: cleaningIncentive,
+      other_allowances: 0,
       overtime_amount: overtimeAmount,
       absence_deduction: absenceDeduction,
       late_deduction: 0,
@@ -177,7 +174,7 @@ export async function POST(request: Request) {
       basic_salary: basic,
       housing_allowance: housing,
       transport_allowance: transport,
-      other_allowances: cleaningIncentive,
+      other_allowances: 0,
       overtime_amount: overtimeAmount,
       absence_deduction: absenceDeduction,
       late_deduction: 0,
